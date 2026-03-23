@@ -4,10 +4,11 @@ import { drawCharacter, CHARACTER_W, CHARACTER_H } from './Character'
 import { drawRoomBackground, drawRoomEnvironment, LAMP_X_FACTOR, lampBulbY } from './Room'
 import { drawParallaxBackground, drawParallaxForeground, STALK_CONFIGS, MAX_SWAY } from './ParallaxLayer'
 import { lerp } from '@/utils/lerp'
+import { createParticles, drawParticles } from './Particles'
 
-const SPEED = 220        // px/s horizontal
+const SPEED = 340        // px/s horizontal
 const GRAVITY = 1800     // px/s²
-const JUMP_VEL = 720     // px/s upward
+const JUMP_VEL = 920     // px/s upward
 const GROUND_OFFSET = 64 // px from canvas bottom
 const ROOM_COUNT = 3     // 0=work, 1=spawn, 2=timeline
 const SPAWN_ROOM = 1
@@ -43,6 +44,9 @@ export function GameCanvas() {
 
     // Per-stalk independent sway values (one lerped state per stalk type)
     const swayValues = STALK_CONFIGS.map(() => 0)
+
+    // Ambient particles — created once, drifted via time each frame
+    const particles = createParticles()
 
     // Lamp glow (0=resting, 1=fully hovered)
     let lampGlow = 0
@@ -117,10 +121,16 @@ export function GameCanvas() {
         lampGlow = lerp(lampGlow, 0, 0.1)
       }
 
-      // Draw
+      // time in seconds for particle drift
+      const time = timestamp / 1000
+
+      // Draw order: bg → parallax bg → room env → particles → parallax fg → character
       drawRoomBackground(ctx, currentRoom, canvas.width, canvas.height)
       drawParallaxBackground(ctx, charX, canvas.width, canvas.height, ground)
       drawRoomEnvironment(ctx, currentRoom, canvas.width, canvas.height, ground, lampGlow)
+      if (currentRoom === 1) {
+        drawParticles(ctx, particles, canvas.width, canvas.height, time)
+      }
       drawParallaxForeground(ctx, charX, canvas.width, ground, swayValues)
       drawCharacter(ctx, screenX, charY)
 
