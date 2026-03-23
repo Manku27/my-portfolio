@@ -1,14 +1,18 @@
 'use client'
 import { useEffect, useRef } from 'react'
 import { drawCharacter, CHARACTER_W, CHARACTER_H } from './Character'
-import { drawRoom } from './Room'
+import { drawRoomBackground, drawRoomEnvironment, LAMP_X_FACTOR, lampBulbY } from './Room'
+import { drawParallaxBackground, drawParallaxForeground, STALK_CONFIGS, MAX_SWAY } from './ParallaxLayer'
+import { lerp } from '@/utils/lerp'
 
 const SPEED = 220        // px/s horizontal
-const GRAVITY = 1800     // px/s² — heavy Hollow Knight feel
+const GRAVITY = 1800     // px/s²
 const JUMP_VEL = 720     // px/s upward
-const GROUND_OFFSET = 64 // px from bottom of canvas
-const ROOM_COUNT = 3     // rooms: 0=work, 1=spawn, 2=timeline
-const SPAWN_ROOM = 1     // character starts in this room
+const GROUND_OFFSET = 64 // px from canvas bottom
+const ROOM_COUNT = 3     // 0=work, 1=spawn, 2=timeline
+const SPAWN_ROOM = 1
+
+const LAMP_HOVER_RADIUS = 70 // px — distance at which lamp starts glowing
 
 export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -20,12 +24,30 @@ export function GameCanvas() {
     if (!ctx) return
 
     const resize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+      canvas.width  = window.innerWidth  || 1280
+      canvas.height = window.innerHeight || 720
     }
     resize()
     window.addEventListener('resize', resize)
 
+    // Mouse state
+    let mouseX = -9999
+    let mouseY = -9999
+    let mouseNorm = 0 // X normalised -1..1 for sway
+    const onMouseMove = (e: MouseEvent) => {
+      mouseX    = e.clientX
+      mouseY    = e.clientY
+      mouseNorm = (e.clientX / (canvas.width || 1280) - 0.5) * 2
+    }
+    window.addEventListener('mousemove', onMouseMove)
+
+    // Per-stalk independent sway values (one lerped state per stalk type)
+    const swayValues = STALK_CONFIGS.map(() => 0)
+
+    // Lamp glow (0=resting, 1=fully hovered)
+    let lampGlow = 0
+
+    // Keys
     const keys = new Set<string>()
     const onKeyDown = (e: KeyboardEvent) => {
       keys.add(e.code)
@@ -41,12 +63,11 @@ export function GameCanvas() {
 
     const groundY = () => canvas.height - GROUND_OFFSET
 
-    // World-space position — room 1 is the spawn room
-    let charX = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2
-    let charY = groundY() - CHARACTER_H
-    let velY = 0
+    let charX     = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2
+    let charY     = groundY() - CHARACTER_H
+    let velY      = 0
     let isGrounded = true
-    let jumpsLeft = 2
+    let jumpsLeft  = 2
     let currentRoom = SPAWN_ROOM
 
     let rafId: number
@@ -56,16 +77,13 @@ export function GameCanvas() {
       const delta = Math.min((timestamp - lastTimestamp) / 1000, 0.05)
       lastTimestamp = timestamp
 
-      // Horizontal movement in world space
-      const movingLeft = keys.has('ArrowLeft') || keys.has('KeyA')
-      const movingRight = keys.has('ArrowRight') || keys.has('KeyD')
-      if (movingLeft) charX -= SPEED * delta
-      if (movingRight) charX += SPEED * delta
+      // Horizontal
+      if (keys.has('ArrowLeft')  || keys.has('KeyA')) charX -= SPEED * delta
+      if (keys.has('ArrowRight') || keys.has('KeyD')) charX += SPEED * delta
       charX = Math.max(0, Math.min(ROOM_COUNT * canvas.width - CHARACTER_W, charX))
 
-      // Room snap — which room is the character in?
-      currentRoom = Math.floor(charX / canvas.width)
-      currentRoom = Math.max(0, Math.min(ROOM_COUNT - 1, currentRoom))
+      // Room snap
+      currentRoom = Math.max(0, Math.min(ROOM_COUNT - 1, Math.floor(charX / canvas.width)))
 
       // Vertical
       velY += GRAVITY * delta
@@ -78,14 +96,32 @@ export function GameCanvas() {
         jumpsLeft = 2
       }
 
-      // Camera offset — snaps to current room
+      // Camera
       const cameraX = currentRoom * canvas.width
-
-      // Screen-space character position
       const screenX = charX - cameraX
 
+      // Independent stalk sway — each lerps at its own rate toward cursor target
+      for (let i = 0; i < STALK_CONFIGS.length; i++) {
+        const { lerpRate, amplitude } = STALK_CONFIGS[i]
+        swayValues[i] = lerp(swayValues[i], mouseNorm * MAX_SWAY * amplitude, lerpRate)
+      }
+
+      // Lamp glow — compute hover distance only in spawn room
+      if (currentRoom === 1) {
+        const lampScreenX = canvas.width * LAMP_X_FACTOR
+        const lampBY      = lampBulbY(ground)
+        const dist = Math.hypot(mouseX - lampScreenX, mouseY - lampBY)
+        const glowTarget = Math.max(0, 1 - dist / LAMP_HOVER_RADIUS)
+        lampGlow = lerp(lampGlow, glowTarget, 0.1)
+      } else {
+        lampGlow = lerp(lampGlow, 0, 0.1)
+      }
+
       // Draw
-      drawRoom(ctx, currentRoom, canvas.width, canvas.height, ground)
+      drawRoomBackground(ctx, currentRoom, canvas.width, canvas.height)
+      drawParallaxBackground(ctx, charX, canvas.width, canvas.height, ground)
+      drawRoomEnvironment(ctx, currentRoom, canvas.width, canvas.height, ground, lampGlow)
+      drawParallaxForeground(ctx, charX, canvas.width, ground, swayValues)
       drawCharacter(ctx, screenX, charY)
 
       console.log('frame delta:', (delta * 1000).toFixed(2), 'ms')
@@ -100,6 +136,7 @@ export function GameCanvas() {
       window.removeEventListener('resize', resize)
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('mousemove', onMouseMove)
     }
   }, [])
 
