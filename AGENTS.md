@@ -7,25 +7,60 @@
 ## Instructions for every session
 
 - Read this file fully before writing any code
-- Read `docs/portfolio-ideation.md` for the full reasoning behind decisions
+- Read `docs/portfolio-ideation.md` for concept and decisions
+- Read `docs/game-design.md` for game mechanics, world layout, and aesthetic
 - Check `utils/` before creating any utility function — it may already exist
 - Put all new utility functions in `utils/` — never inline in components
 - Always verify latest stable version before installing any new package
-- All data imports come from `lib/data/index.ts` — never from individual data files directly
+- All data imports come from `lib/data/index.ts` — never individual files
 - Never hardcode content in components or pages
 
 ---
 
 ## What this project is
 
-A personal portfolio and life-diary site for Mayank Jhunjhunwala — Senior Fullstack Engineer.
+A **playable 2D side-scrolling platformer that is also a portfolio**.
 
-This is not a standard portfolio. It is a public record of a life — work, curiosity, taste, and craft in one place. The professional layer exists for recruiters. The rest is built for anyone who wants to understand who he is, not just what he's shipped.
+The game IS the navigation. No traditional nav bar, no links, no menus.
+The world is the resume, the diary, the work history. You walk through it.
 
-The person behind this site: grew up poor, fought to go to Kota for JEE prep, had a mental breakdown, was pulled back by Batman and Spider-Man (literally — not a metaphor), landed at Jadavpur University, barely graduated with multiple backlogs, chose web development for financial pragmatism, started at 3.5 LPA, grew 7x in five years from a standing start with zero family advantage. Comics are not a hobby — they rebuilt him. Vishuddha Comics is that value made into a product. He builds things because they need to exist, not for portfolio or clout.
+The person behind this site: grew up poor, fought to go to Kota for JEE
+prep, had a mental breakdown, was pulled back by Batman and Spider-Man
+(literally), landed at Jadavpur University, barely graduated with multiple
+backlogs, chose web development for financial pragmatism, started at 3.5
+LPA, grew 7x in five years from zero family advantage. Comics are not a
+hobby — they rebuilt him. He builds things because they need to exist.
 
-Full personal story and context lives in `lib/data/about.ts`.
-Full ideation and decision reasoning lives in `docs/portfolio-ideation.md`.
+Full personal story: `lib/data/about.ts`
+Full ideation: `docs/portfolio-ideation.md`
+Game design: `docs/game-design.md`
+
+---
+
+## The world
+
+```
+← [Work world]    [Spawn / Landing]    [Timeline world] →
+```
+
+- Visitor spawns at centre
+- Left → work world (companies, projects, consulting)
+- Right → timeline world (life diary, recent first)
+- Charm system routes to other worlds (books, movies, writing, games)
+- Camera: room-based snapping — not smooth follow
+- Controls: arrow keys / WASD + space to jump (single jump)
+- Mobile: out of scope — show "desktop only" message
+
+---
+
+## Game engine
+
+**Canvas 2D with requestAnimationFrame.** Not R3F, not Rapier, not a
+game framework. Hand-rolled 2D platformer physics — gravity, velocity,
+AABB collision detection. Canvas 2D is the correct tool for a 2D game.
+
+The 3D POC in `components/3d/` is a separate experiment. The game world
+renders on a 2D canvas, not WebGL.
 
 ---
 
@@ -35,15 +70,13 @@ Full ideation and decision reasoning lives in `docs/portfolio-ideation.md`.
 |---|---|
 | Framework | Next.js 16.2.1 — App Router |
 | Language | TypeScript — strict, always |
-| Styling | Tailwind CSS v4 |
-| 3D | React Three Fiber 9.5.0 + Drei 10.7.7 |
-| Animation | GSAP + @gsap/react + ScrollTrigger + Lenis |
+| Game engine | Canvas 2D + requestAnimationFrame |
+| Animation | GSAP + @gsap/react (UI/transitions, not game loop) |
+| Styling | Tailwind CSS v4 (UI only, not game canvas) |
 | Database | Neon (Postgres) — NOT YET WIRED |
 | Image storage | Vercel Blob — NOT YET WIRED |
 | Auth | Not implemented yet |
 | Hosting | Vercel |
-
-**R3F version pairing:** R3F 9 requires React 19. Do not downgrade either.
 
 ---
 
@@ -63,7 +96,10 @@ Full ideation and decision reasoning lives in `docs/portfolio-ideation.md`.
 }
 ```
 
-**Not yet installed (add when wiring up data layer):**
+three / R3F / Drei remain installed but are used only for the POC experiment
+at `/poc`. The game world does not use them.
+
+Not yet installed:
 - `@neondatabase/serverless`
 - `@vercel/blob`
 
@@ -72,176 +108,112 @@ Full ideation and decision reasoning lives in `docs/portfolio-ideation.md`.
 ## Project structure
 
 ```
-app/                    Next.js App Router pages
-  layout.tsx            Root layout — fonts, global metadata
-  page.tsx              / — Landing + timeline (spine of the site)
-  work/
-    page.tsx            /work — Clean professional layer, resume-equivalent
-  content/
-    page.tsx            /content — Blogs + videos index, filterable
-    [slug]/
-      page.tsx          /content/[slug] — Individual blog post, SSG
-  books/
-    page.tsx            /books — Reading log
-  movies/
-    page.tsx            /movies — Watchlist + reviews
-  games/
-    page.tsx            /games — Gaming log
-  admin/
-    page.tsx            /admin — Protected CMS (auth parked for later)
-
-lib/
-  types.ts              ALL TypeScript interfaces — single source of truth
-  data/                 Real and seeded data — one file per domain
-    index.ts            Barrel export — the ONLY import point for data
-    about.ts            Full personal story, values, self-assessment
-    profile.ts          Name, bio, socials, skills, availability
-    work.ts             Work experience, consulting, projects, certs, education
-    timeline.ts         Timeline entries — seeded from real life
-    books.ts            Reading log
-    movies.ts           Watch history
-    games.ts            Gaming log — manual only, no API
-    videos.ts           YouTube videos
+app/
+  layout.tsx            Root layout
+  page.tsx              Entry point — loads the game
+  poc/
+    page.tsx            3D particle POC — experiment only, not the game
 
 components/
-  3d/                   R3F canvas, particle system, scene components
-  timeline/             Timeline and filter bar components
-  ui/                   Shared UI components
+  3d/                   R3F POC components — experiment only
+  game/                 Canvas 2D game components — the actual product
+    GameCanvas.tsx      Main canvas, game loop, input handling
+    World.tsx           World state, room management
+    Character.tsx       Player character — Knight sprite + physics
+    ParallaxLayer.tsx   Background depth layers
+    Room.tsx            Individual room/section rendering
+    CharmMenu.tsx       Charm inventory UI overlay
 
-utils/                  Reusable utility functions — always check here first
+lib/
+  types.ts              All TypeScript interfaces
+  data/
+    index.ts            Barrel export — only import point
+    about.ts            Full personal story and values
+    profile.ts          Name, bio, socials, skills
+    work.ts             Work experience, consulting, projects
+    timeline.ts         Timeline entries
+    books.ts            Reading log
+    movies.ts           Watch history
+    games.ts            Gaming log
+    videos.ts           YouTube videos
 
-public/                 Static assets only
+utils/                  Reusable helpers — check here first
+public/
+  sprites/              Game sprite sheets and assets
 docs/
-  portfolio-ideation.md Full ideation — concept, all decisions, all reasoning
+  portfolio-ideation.md Full ideation and concept
+  game-design.md        Game mechanics, world layout, aesthetic spec
 ```
 
 ---
 
 ## Data layer
 
-**No database is connected yet.** Everything runs on static data files in `lib/data/`.
+No database connected yet. Static files in `lib/data/`.
 
-- Types live in `lib/types.ts`
-- All data lives in `lib/data/` — one file per domain
-- **Import only from `lib/data/index.ts`** — never from individual files
-- When Neon is wired later, only `lib/data/index.ts` exports change — nothing else
+- Types: `lib/types.ts`
+- Import only from: `lib/data/index.ts`
+- When DB wired: only `lib/data/index.ts` exports change
 
-### Content types (see `lib/types.ts`)
-- `Profile` — name, bio, socials, skills, availability
-- `About` — full personal story, values, strengths, gaps (see `lib/data/about.ts`)
-- `TimelineEntry` — unified diary, one record per life event
-- `WorkExperience` — job history
-- `ConsultingEngagement` — consulting engagements
-- `Project` — side projects
-- `Certification` / `Award` / `Education`
-- `Post` — blog post with markdown body
-- `Video` — YouTube video
-- `Book` — reading log entry
-- `Movie` — watch history entry
-- `Game` — gaming log entry
-
-### Ratings — 1 to 10 everywhere, no exceptions
-### Tags — freeform strings, no fixed taxonomy
+The data layer is agnostic to render target — same data whether rendered
+as a game world or a conventional web page.
 
 ---
 
-## Utils
+## Aesthetic
 
-Before writing any helper or utility function:
-1. Check `utils/` — it may already exist
-2. If not, create it there with a descriptive filename
-3. Never write utilities inline in components or pages
-4. Named exports only
+Hollow Knight — Greenpath. Deep teal-black, bioluminescent light, sparse
+particles, parallax depth. Full spec in `docs/game-design.md`.
 
----
-
-## Routing
-
-| Route | Purpose |
-|---|---|
-| `/` | 3D hero → scroll → unified timeline |
-| `/work` | Clean professional page, no timeline noise |
-| `/content` | Blogs + videos, filterable |
-| `/content/[slug]` | Individual blog post, SSG |
-| `/books` | Reading log |
-| `/movies` | Watchlist + reviews |
-| `/games` | Gaming log |
-| `/admin` | CMS — auth not implemented yet |
-
----
-
-## 3D layer
-
-Dark, atmospheric — ink dispersing in water. Hollow Knight influenced. Cursor-reactive in hero state, scroll drives transition into timeline.
-
-- R3F `<Canvas>` — `position: fixed`, full viewport, behind everything
-- HTML layers on top with `position: relative` and higher z-index
-- All 3D in `components/3d/`
-- Always `dynamic(() => import(...), { ssr: false })`
-- `PerformanceMonitor` (Drei) — drop `dpr` to 0.75 on weak devices
-- Flat CSS fallback for very low-end mobile
-
----
-
-## Rendering strategy
-
-| Content | Strategy |
-|---|---|
-| Blog posts | SSG via `generateStaticParams` |
-| `/work` | Static |
-| Timeline, `/books`, `/movies`, `/games` | Static |
-| 3D canvas | Client-only, `ssr: false` |
-| `/admin` | Client |
-
-Never fetch content client-side for public pages.
-
----
-
-## SEO
-
-Every page needs a `metadata` export with title, description, openGraph, and canonical URL. Blog posts canonical URL always points to this domain, not Medium.
-
----
-
-## Mobile
-
-Hard constraint. Mobile styles first, desktop as overrides. `/admin` must work on phone. No hover-only interactions. 375px minimum.
+Palette:
+- Background: `#050a0a` to `#0a1a1a`
+- Light: bioluminescent teal-green, cold white wisps
+- Accent: faint amber/gold
 
 ---
 
 ## Conventions
 
 - Named exports only from `lib/` and `utils/`
-- No inline styles — Tailwind only
+- No inline styles — Tailwind for UI, Canvas API for game
 - No `any` — strict TypeScript
 - PascalCase component files, one component per file
-- No hardcoded content in components — everything from `lib/data/index.ts`
-- `next/image` always, never raw `<img>`
+- No hardcoded content — everything from `lib/data/index.ts`
+- Check `utils/` before writing any helper
+- Verify latest stable version before installing packages
 
 ---
 
 ## Build order
 
 1. ✅ Scaffold
-2. ✅ Packages installed — three, R3F, Drei, GSAP, @gsap/react, Lenis
+2. ✅ Packages installed
 3. ✅ `lib/types.ts` — all types defined
-4. ✅ `lib/data/` — seeded with real data including personal story
-5. ⬜ **Timeline on `/`** — the spine of the site, builds first
-6. ⬜ Category pages — `/content`, `/books`, `/movies`, `/games`
-7. ⬜ `/work` page
-8. ⬜ 3D hero — drops on top of working content
-9. ⬜ `/admin` — mobile-first CMS
-10. ⬜ Auth for `/admin`
-11. ⬜ Database (Neon) + Vercel Blob
-12. ⬜ Breakout game — last
+4. ✅ `lib/data/` — seeded with real data
+5. ✅ `app/poc/` — 3D particle experiment (parked, not the game)
+6. ⬜ **Game canvas foundation** — Canvas 2D setup, game loop, input
+7. ⬜ **Character** — Knight sprite, movement, single jump, gravity
+8. ⬜ **Spawn room** — landing zone, atmospheric, two paths visible
+9. ⬜ **Parallax layers** — three depth layers, cursor-reactive foreground
+10. ⬜ **Timeline world** — rooms to the right, entries as world objects
+11. ⬜ **Work world** — rooms to the left, buildings per company
+12. ⬜ **Charm system** — inventory UI, routing between worlds
+13. ⬜ **Interactive objects** — bricks, shake feedback
+14. ⬜ **Other worlds** — books, movies, writing, games
+15. ⬜ **Polish** — particles, ambient sound (later), performance
+16. ⬜ **Admin + DB** — content management, Neon wired
+17. ⬜ **Auth** — protect admin
 
 ---
 
 ## What is NOT done yet
 
+- No game canvas
+- No character
+- No game world
+- No charm system
 - No database
 - No auth
 - No Vercel Blob
-- No routes beyond `/` scaffolded
-- No `components/` directory
-- No `utils/` directory
+- `components/game/` does not exist yet
+- `public/sprites/` does not exist yet
