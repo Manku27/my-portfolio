@@ -6,6 +6,7 @@ import { drawParallaxBackground, drawParallaxForeground, STALK_CONFIGS, MAX_SWAY
 import { lerp } from '@/utils/lerp'
 import { createParticles, drawParticles } from './Particles'
 import { initBricks, updateBricks, checkBrickCollisions, drawBricks } from './Bricks'
+import { drawCharmMenu, CHARM_COUNT } from './CharmMenu'
 
 const SPEED = 340        // px/s horizontal
 const GRAVITY = 1800     // px/s²
@@ -55,9 +56,31 @@ export function GameCanvas() {
     // Lamp glow (0=resting, 1=fully hovered)
     let lampGlow = 0
 
+    // Charm menu state
+    let charmOpen     = false
+    let charmProgress = 0      // 0=closed, 1=fully open (animated)
+    let charmSelected = 0      // 0-5
+
     // Keys
     const keys = new Set<string>()
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Tab') {
+        e.preventDefault()
+        charmOpen = !charmOpen
+        return
+      }
+      if (e.code === 'Escape' && charmOpen) {
+        charmOpen = false
+        return
+      }
+      if (charmOpen) {
+        // Arrow key navigation within charm grid
+        if (e.code === 'ArrowLeft')  charmSelected = Math.max(0, charmSelected - 1)
+        if (e.code === 'ArrowRight') charmSelected = Math.min(CHARM_COUNT - 1, charmSelected + 1)
+        if (e.code === 'ArrowUp')    charmSelected = Math.max(0, charmSelected - 3)
+        if (e.code === 'ArrowDown')  charmSelected = Math.min(CHARM_COUNT - 1, charmSelected + 3)
+        return // block all other keys when menu is open
+      }
       keys.add(e.code)
       if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && jumpsLeft > 0) {
         velY = -JUMP_VEL
@@ -85,9 +108,14 @@ export function GameCanvas() {
       const delta = Math.min((timestamp - lastTimestamp) / 1000, 0.05)
       lastTimestamp = timestamp
 
-      // Horizontal
+      // Animate charm menu open/close
+      charmProgress = lerp(charmProgress, charmOpen ? 1 : 0, Math.min(1, delta * 10))
+
+      // Horizontal — blocked while charm menu is open
+      if (!charmOpen) {
       if (keys.has('ArrowLeft')  || keys.has('KeyA')) charX -= SPEED * delta
       if (keys.has('ArrowRight') || keys.has('KeyD')) charX += SPEED * delta
+      }
       charX = Math.max(0, Math.min(ROOM_COUNT * canvas.width - CHARACTER_W, charX))
 
       // Room snap
@@ -98,10 +126,14 @@ export function GameCanvas() {
       charY += velY * delta
       const ground = groundY()
 
-      // Brick collision — head hits brick underside while moving up
-      const brickResult = checkBrickCollisions(bricks, charX, charY, velY, CHARACTER_W, ground, canvas.width)
+      // Brick collision — head hits underside or feet land on top
+      const brickResult = checkBrickCollisions(bricks, charX, charY, velY, CHARACTER_W, CHARACTER_H, ground, canvas.width)
       velY  = brickResult.newVelY
       charY = brickResult.newCharY
+      if (brickResult.landed) {
+        isGrounded = true
+        jumpsLeft  = 2
+      }
       updateBricks(bricks, delta)
 
       if (charY + CHARACTER_H >= ground) {
@@ -146,7 +178,10 @@ export function GameCanvas() {
       drawParallaxForeground(ctx, charX, canvas.width, ground, swayValues)
       drawCharacter(ctx, screenX, charY)
 
-      console.log('frame delta:', (delta * 1000).toFixed(2), 'ms')
+      // Charm menu — drawn last so it sits on top of everything
+      if (charmProgress > 0.01) {
+        drawCharmMenu(ctx, canvas.width, canvas.height, charmProgress, charmSelected)
+      }
 
       rafId = requestAnimationFrame(loop)
     }

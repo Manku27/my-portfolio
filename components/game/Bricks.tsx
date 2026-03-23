@@ -37,30 +37,42 @@ export function checkBrickCollisions(
   charY: number,
   velY: number,
   charW: number,
+  charH: number,
   groundY: number,
   canvasWidth: number
-): { newVelY: number; newCharY: number } {
-  if (velY >= 0) return { newVelY: velY, newCharY: charY }
-
+): { newVelY: number; newCharY: number; landed: boolean } {
   let newVelY  = velY
   let newCharY = charY
+  let landed   = false
 
   for (const brick of bricks) {
     const bwx     = brick.room * canvasWidth + brick.xFrac * canvasWidth - brick.w / 2
-    const bwy     = groundY - brick.yFromGround          // brick top
-    const bBottom = bwy + brick.h                        // brick bottom
+    const bwy     = groundY - brick.yFromGround   // brick top
+    const bBottom = bwy + brick.h                 // brick bottom
 
-    const hOverlap   = charX + charW > bwx && charX < bwx + brick.w
-    const vPenetrate = newCharY < bBottom && newCharY > bwy
+    const hOverlap = charX + charW > bwx && charX < bwx + brick.w
 
-    if (hOverlap && vPenetrate) {
-      newVelY  = 0
-      newCharY = bBottom  // push head down to brick underside
-      if (brick.shake <= 0) brick.shake = 0.28
+    // Head hits underside going UP — block and shake
+    if (newVelY < 0 && hOverlap) {
+      if (newCharY < bBottom && newCharY > bwy) {
+        newVelY  = 0
+        newCharY = bBottom
+        if (brick.shake <= 0) brick.shake = 0.28
+      }
+    }
+
+    // Feet land on top going DOWN — block and land
+    if (newVelY > 0 && hOverlap) {
+      const feet = newCharY + charH
+      if (feet >= bwy && feet < bBottom) {
+        newVelY  = 0
+        newCharY = bwy - charH
+        landed   = true
+      }
     }
   }
 
-  return { newVelY, newCharY }
+  return { newVelY, newCharY, landed }
 }
 
 export function drawBricks(
