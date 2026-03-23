@@ -6,7 +6,7 @@ import { drawParallaxBackground, drawParallaxForeground, STALK_CONFIGS, MAX_SWAY
 import { lerp } from '@/utils/lerp'
 import { createParticles, drawParticles } from './Particles'
 import { initBricks, updateBricks, checkBrickCollisions, drawBricks } from './Bricks'
-import { drawCharmMenu, CHARM_COUNT } from './CharmMenu'
+import { drawCharmMenu, CHARM_COUNT, getCharmAtPoint, getCharmId } from './CharmMenu'
 
 const SPEED = 340        // px/s horizontal
 const GRAVITY = 1800     // px/s²
@@ -41,8 +41,21 @@ export function GameCanvas() {
       mouseX    = e.clientX
       mouseY    = e.clientY
       mouseNorm = (e.clientX / (canvas.width || 1280) - 0.5) * 2
+      if (charmOpen) {
+        const hit = getCharmAtPoint(mouseX, mouseY, canvas.width, canvas.height)
+        if (hit !== -1) charmSelected = hit
+      }
+    }
+    const onMouseClick = (e: MouseEvent) => {
+      if (!charmOpen) return
+      const hit = getCharmAtPoint(e.clientX, e.clientY, canvas.width, canvas.height)
+      if (hit !== -1) {
+        charmSelected = hit
+        window.location.hash = getCharmId(hit)
+      }
     }
     window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('click', onMouseClick)
 
     // Per-stalk independent sway values (one lerped state per stalk type)
     const swayValues = STALK_CONFIGS.map(() => 0)
@@ -74,11 +87,11 @@ export function GameCanvas() {
         return
       }
       if (charmOpen) {
-        // Arrow key navigation within charm grid
         if (e.code === 'ArrowLeft')  charmSelected = Math.max(0, charmSelected - 1)
         if (e.code === 'ArrowRight') charmSelected = Math.min(CHARM_COUNT - 1, charmSelected + 1)
         if (e.code === 'ArrowUp')    charmSelected = Math.max(0, charmSelected - 3)
         if (e.code === 'ArrowDown')  charmSelected = Math.min(CHARM_COUNT - 1, charmSelected + 3)
+        if (e.code === 'Enter')      window.location.hash = getCharmId(charmSelected)
         return // block all other keys when menu is open
       }
       keys.add(e.code)
@@ -194,6 +207,7 @@ export function GameCanvas() {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('click', onMouseClick)
     }
   }, [])
 
