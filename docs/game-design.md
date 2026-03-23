@@ -10,40 +10,161 @@ IS the navigation, not a feature on top of it.
 
 ---
 
-## The world
-
-A single continuous horizontal world with the spawn point at the centre.
+## The world — three directions from spawn
 
 ```
-← [Work world]      [Spawn]      [Timeline world] →
+        ← [Work world]
+
+[Spawn / Landing]          → [Timeline world]
+
+        ↓ [About Me world — vertical descent]
 ```
 
-### Spawn point
-Where the visitor arrives. The landing zone. Atmospheric, Hollow Knight
-aesthetic — dark, bioluminescent, sparse light sources. Two paths visible.
-Lamp posts to the left nudge toward work. The path opening to the right
-suggests the timeline.
+The spawn room is the centre of three axes:
+- **Left** — work history, companies, projects, consulting
+- **Right** — timeline, life diary, recent first
+- **Down** — about me, personal story, life experiences
 
-### Left — the work world
-The professional layer rendered as a game environment.
+The vertical axis (down) is accessed by falling into a pit in the ground
+of the spawn room.
 
-- Different buildings for different companies:
-  - Infosys — first building, modest, early
-  - PwC India — larger, government/corporate aesthetic
-  - Tech Mahindra — tech campus feel, Microsoft Bing Ads signage
-  - Merkle/Dentsu — current, most prominent building
-- A workstation area for personal projects — Moebius, PK Chai, Vishuddha etc.
-- Consulting engagements (Wohana, RaiseMatters) as separate structures
-- Content visible in the world in a thematic font — not hidden, not in panels
+---
 
-### Right — the timeline world
-Life, recent first. As you walk right, you go further back in time.
+## The spawn room — landing screen
 
-- Each timeline entry is an object or location in the world
-- Milestone entries are visually distinct — larger structures, more prominent
-- Short entries are smaller environmental details
-- Content visible in the world, in the environment
-- No filters on the timeline — the charm system handles routing to other worlds
+This is what every visitor sees first. All elements coexist in the world —
+nothing is a UI overlay.
+
+### Centre
+- **Your name** — rendered in the world using the thematic font
+- Behaves as a brick/platform — the character can jump onto the letters
+- Does NOT look like a regular brick — styled as large atmospheric text
+- **One liner** beneath or near the name:
+  "I build things because they need to exist."
+
+### Left edge of spawn room
+- Your role: "Senior Fullstack Engineer"
+- A signpost pointing left — labelled something evocative (not just "Work")
+- Hints at the work world without being a UI element
+
+### Right edge of spawn room
+- A signpost or environmental hint pointing right
+- Something like "What have I been up to?" — pointing toward the timeline
+- Casual, curious tone — matches the timeline's diary nature
+
+### The pit — vertical descent
+- A gap in the ground, visible from the spawn room
+- Falling into it descends into the About Me world
+- Near the pit edge: text or a sign reading "Who are you?" as the hint
+- The pit should look intentional — a designed opening, not a hole
+
+---
+
+## The About Me world — vertical descent
+
+Accessed by falling into the pit in the spawn room. Scrolls vertically
+downward. This is the most personal layer — the story behind the resume.
+
+Content pulled from `lib/data/about.ts`:
+- The Kota story — JEE prep, mental breakdown, love for physics
+- Batman and Spider-Man pulling him back (named explicitly)
+- Jadavpur University, backlogs, barely graduating
+- The pragmatic switch to web development
+- Comics as a value system, not a hobby
+- The pattern: hits walls, doesn't quit, finds another way through
+- Honest self-assessment — strengths and gaps
+
+Each story beat is a world object — a platform, a sign, a structure.
+Walking/falling down reveals more of the story.
+
+To return to spawn: a platform or door at the bottom that sends you back up.
+
+---
+
+## The work world — left of spawn
+
+Company buildings, each with an exterior and a roof.
+
+### Building exterior (visible as you walk past)
+- Company logo / name
+- Duration (e.g. "2 years")
+- One line description — what kind of company it was
+- Visible without any interaction
+
+### Roof interaction — speech bubble
+When the character stands on the roof of a building:
+- A speech bubble rises from the building
+- Contains the detailed view:
+  - Full role title
+  - All bullet points / achievements
+  - Tech used
+- Speech bubble is diegetic — the building is talking to you
+- Not a browser modal, not a separate route
+- Close by walking off the roof
+
+### Buildings (left to right = most recent to oldest)
+- Merkle/Dentsu — current, most prominent, closest to spawn
+- Tech Mahindra — Microsoft Bing Ads signage
+- PwC India — government/corporate aesthetic
+- Infosys — first building, modest, early
+- Workstation area — personal projects (Moebius, PK Chai, Vishuddha etc.)
+- Consulting structures — Wohana, RaiseMatters
+
+---
+
+## The timeline world — right of spawn
+
+Life diary. Walking right goes further back in time. Recent first.
+
+Each timeline entry is a world object:
+- Milestone entries (`isMilestone: true`) — larger, more prominent structures
+- Short entries — smaller environmental details, signs, objects
+- Rich entries — have an image or embed visible in the world
+
+### Speech bubble interaction
+Same mechanic as work world. Standing near or on a timeline object
+triggers a speech bubble with full entry detail.
+
+Content pulled from `lib/data/timeline.ts`.
+
+---
+
+## The charm system — navigation
+
+Styled after Hollow Knight's charm equipping. Opens a charm inventory.
+Each charm routes you to a different content world.
+
+| Charm | Routes to |
+|---|---|
+| Work | Left world — professional layer |
+| Timeline | Right world — life diary |
+| About | Down — personal story |
+| Books | Books world |
+| Movies | Movies world |
+| Writing | Content / blog world |
+| Games | Games world |
+
+Charm UI: dark inventory screen, charms as small glowing objects.
+Tab to open/close. This IS the site navigation — no nav bar, no links.
+
+---
+
+## Speech bubble system — interaction mechanic
+
+Used throughout all worlds. Replaces modals entirely.
+
+**Trigger:** character stands on a roof / near a world object
+**Behaviour:**
+- Speech bubble animates in from the object
+- Styled in the world aesthetic — dark background, teal border, thematic font
+- Contains full detail for that object
+- Dismisses when character walks away
+- Never pauses the game — world continues underneath
+
+**Why not a modal:**
+- Modals break the game feel
+- Speech bubbles are diegetic — the world is speaking
+- Consistent with the platformer language
 
 ---
 
@@ -52,12 +173,15 @@ Life, recent first. As you walk right, you go further back in time.
 Using Hollow Knight's Knight character assets. Personal portfolio, no
 commercial use, no monetization — fair use for personal project.
 
+Currently: white rectangle placeholder (32×48px).
+Replace with Knight sprite sheet when assets are sourced.
+
 Animations needed:
 - Idle
 - Walk left / walk right
 - Jump
 - Land
-- Hit reaction (when striking a brick/interactive element)
+- Hit reaction (brick hit)
 
 ---
 
@@ -69,117 +193,75 @@ Desktop only. Mobile explicitly out of scope.
 |---|---|
 | Arrow left / A | Walk left |
 | Arrow right / D | Walk right |
-| Space / Arrow up / W | Jump (single jump only) |
+| Space / Arrow up | Jump (single jump only) |
+| Tab | Open / close charm inventory |
 | Cursor movement | Background elements react |
 
----
-
-## Interactivity
-
-### Background elements
-Ambient reactivity to cursor proximity — plants sway, wisps drift, light
-flickers. The Hollow Knight atmospheric layer. Always on, no input required.
-
-### Bricks / interactive objects
-Scattered through the world. Jump and hit from below. On hit — object shakes,
-satisfying tactile reaction. Content already visible — the hit is feedback,
-not a reveal. Nothing is hidden.
-
-### Content surfacing
-Nothing is hidden. All content visible in the environment as you walk.
-Hitting objects gives shake feedback only. The world IS the portfolio.
-
----
-
-## The charm system — navigation
-
-Styled after Hollow Knight's charm equipping. Opens a charm inventory screen.
-Equipping a charm routes you to that world. This IS the site navigation —
-no traditional nav bar, no links, no menus.
-
-| Charm | Routes to |
-|---|---|
-| Work charm | Left world — professional layer |
-| Timeline charm | Right world — life diary |
-| Books charm | Books world |
-| Movies charm | Movies world |
-| Writing charm | Content / blog world |
-| Games charm | Games world |
-
-Charm UI: dark inventory screen, charms as small glowing objects, equip by
-selecting. Hollow Knight's actual charm screen is the visual reference.
+Note: W and S not used. W conflicts with jump, S has no action.
 
 ---
 
 ## Camera
 
-**Room-based snapping.** The world is divided into rooms/sections. The camera
-snaps to each room as the character enters it. Not smooth follow — discrete
-transitions between defined sections. Simpler to build, easier to control
-content layout.
+**Room-based snapping.** World divided into rooms. Camera snaps to each
+room as character enters it. Not smooth follow — discrete transitions.
+
+For the vertical About Me world: camera snaps downward as character
+descends through sections.
 
 ---
 
 ## Physics
 
-**Single jump.** No double jump. Simple, clean. Gravity weight should feel
-heavy — Hollow Knight-style, not floaty Mario-style.
+**Single jump.** No double jump. Heavy gravity — Hollow Knight-style.
+Character has weight. Jump feels deliberate, not floaty.
 
 ---
 
 ## Game engine
 
-**Canvas 2D** with requestAnimationFrame. Not R3F, not Rapier. 2D platformer
-physics are straightforward to implement manually — collision detection,
-gravity, velocity. Canvas 2D is fast, appropriate for 2D games, no 3D
-renderer overhead.
-
-The 3D POC (components/3d/) is now a separate experiment and may not be
-used in the final game world. The game renders on a 2D canvas.
+**Canvas 2D with requestAnimationFrame.**
+Not R3F, not Rapier. Hand-rolled 2D platformer physics.
+Canvas 2D is the correct tool — fast, appropriate for 2D games.
 
 ---
 
 ## Aesthetic
 
 ### Reference
-Hollow Knight — Greenpath specifically. Deep teal-black, bioluminescent
-light sources, sparse particles, depth via parallax layers.
+Hollow Knight — Greenpath. Deep teal-black, bioluminescent light,
+sparse particles, depth via parallax layers.
 
 ### Palette
-- Background: near-black with deep teal undertone — `#050a0a` to `#0a1a1a`
+- Background: `#050a0a` to `#0a1a1a`
 - Light sources: bioluminescent teal-green, cold white wisps
 - Accent: faint amber/gold for important elements
-- Typography in world: thematic, weighted, slightly hand-drawn feel
+- Typography: thematic, weighted, slightly hand-drawn feel
 
 ### Parallax layers
-Three depth layers, moving at different speeds as character walks:
-- Far background — near-static, barely moves
-- Mid layer — silhouetted structures, moderate parallax
-- Foreground — plants, props, fastest parallax, cursor-reactive
+- Far: barely moves (factor ~0.1)
+- Mid: moderate (factor ~0.4)
+- Foreground: fastest, cursor-reactive (factor ~0.8)
 
 ### Particles
-Sparse. ~20-30 visible light points across viewport. Large portions of screen
-are pure dark. Variable sizes — a few large ghost wisps, handful of medium
-motes, many near-invisible dust specks. Mostly still. Things have weight.
+Sparse. ~20-30 across viewport. Mostly still. Variable sizes.
+Cold white and faint teal. Large portions of screen pure dark.
 
 ---
 
 ## Mobile
 
-Explicitly out of scope. Show a simple message on mobile viewports:
+Explicitly out of scope. Show on mobile viewports:
 "This experience is designed for desktop."
 
 ---
 
 ## Scope and risk
 
-This is ambitious. The risk of not shipping is real and acknowledged.
+Ambitious. Risk of not shipping is acknowledged.
 
-**Mitigation:**
-- The data layer (lib/data/) is already seeded and agnostic to render target
-- If the game build stalls, a conventional Next.js portfolio scaffolds quickly
-  from the same data — nothing is wasted
-- Ship the game when ready, fallback always available
+Mitigation: if game build stalls, a conventional Next.js portfolio
+scaffolds from the same `lib/data/` files — nothing is wasted.
 
 ---
 
@@ -187,24 +269,25 @@ This is ambitious. The risk of not shipping is real and acknowledged.
 
 | Decision | Answer |
 |---|---|
-| Concept | Playable 2D platformer — game IS the portfolio |
-| World layout | Bidirectional — work left, timeline right, spawn centre |
+| World layout | Three-directional — left work, right timeline, down about me |
+| Landing elements | Name (jumpable), one liner, role + signpost left, hint right, pit down |
+| Interaction mechanic | Speech bubble on roof / near object — not a modal |
+| About Me access | Pit in spawn room floor, vertical descent |
 | Navigation | Charm system — no nav bar, no links |
-| Content surfacing | Visible in world, hits give shake feedback only |
-| Character | Hollow Knight Knight assets — personal use |
+| Content surfacing | Visible in world, speech bubble for detail |
+| Character | Knight placeholder (white rect), sprite later |
 | Camera | Room-based snapping |
 | Jump | Single jump, heavy gravity |
 | Game engine | Canvas 2D + requestAnimationFrame |
-| Background reactivity | Cursor-reactive ambient elements |
-| Mobile | Out of scope — desktop only message shown |
+| Mobile | Out of scope |
 | Aesthetic | Hollow Knight / Greenpath |
 
 ---
 
 ## Open questions
 
-1. **Charm world architecture** — separate canvas contexts per world, or one
-   continuous world with section-based content loading?
-2. **Room dimensions** — how wide is each room, how many rooms per world?
-3. **Death / fall** — if character falls off a platform, what happens?
-4. **Sound** — out of scope for now, revisit later
+1. What does the About Me world look like visually — cave descent, roots,
+   something else?
+2. How far left/right does each world extend — how many rooms?
+3. What does "returning from the pit" feel like — a door, a vine, a lift?
+4. Sound design — out of scope for now, revisit later
