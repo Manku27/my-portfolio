@@ -3,7 +3,7 @@ import { drawTimelineRoom } from './TimelineRoom'
 import { drawWorkRoom } from './WorkRoom'
 // roomIndex: 0 = work (left), 1 = spawn (centre), 2 = timeline (right)
 
-const ROOM_TINTS = ['#051010', '#050a0a', '#050d0a']
+const ROOM_TINTS = ['#070a06', '#050a0a', '#050d0a']
 
 const LAMP_STEM_H = 90
 const LAMP_BULB_R = 10
@@ -170,12 +170,12 @@ export function drawRoomEnvironment(
     ctx.fillRect(0, groundY, canvasWidth, 2)
   }
 
-  // Work room — buildings per company
+  // Work room — room 0
   if (roomIndex === 0) {
     drawWorkRoom(ctx, canvasWidth, groundY)
   }
 
-  // Timeline room — entries as world objects
+  // Timeline room — room 2
   if (roomIndex === 2) {
     drawTimelineRoom(ctx, canvasWidth, groundY)
   }

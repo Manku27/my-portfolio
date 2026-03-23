@@ -1,97 +1,189 @@
-// Work room — room 0, left of spawn. Walking further left = further back in time.
-// First room shows the most recent company (Merkle).
-// Data sourced from lib/data/index.ts.
+// Work room — room 0, single room showing all work history.
+// Left → right = oldest → most recent (spawn is to the right).
+// Data sourced from lib/data/index.ts — never hardcoded.
 
-import { workExperience } from '@/lib/data/index'
+import { workExperience, consultingEngagements } from '@/lib/data/index'
 import { wrapText } from '@/utils/wrapText'
+import type { WorkExperience, ConsultingEngagement } from '@/lib/types'
 
-// Most recent company first — nearest to spawn
-const company = workExperience[0]
+// workExperience is most-recent-first; reverse for left=oldest layout
+const COMPANIES = [...workExperience].reverse()
+// [Infosys, PwC, TechMahindra, Merkle]
 
-function drawBuilding(
+const WOHANA       = consultingEngagements[0]  // Oct 2024–present
+const RAISEMATTERS = consultingEngagements[1]  // Sept 2023–Jul 2024
+
+// Building heights by id
+const BUILDING_H: Record<string, number> = {
+  'merkle-dentsu':           190,
+  'tech-mahindra-microsoft': 155,
+  'pwc':                     168,
+  'infosys':                 110,
+}
+
+// Layout: 4 company buildings + 2 consulting structures = 6 objects
+// x positions as fractions of canvas width, left=oldest, right=most recent
+const COMPANY_X   = [0.08, 0.24, 0.50, 0.72]
+const CONSULTING_X = {
+  'raisematters': 0.62,   // overlaps Tech Mahindra era — sits right of it
+  'wohana':       0.85,   // overlaps Merkle era — sits right of it
+}
+
+// ─── Company building ──────────────────────────────────────────────────────────
+
+function drawCompanyBuilding(
   ctx: CanvasRenderingContext2D,
+  company: WorkExperience,
   cx: number,
   groundY: number
 ): void {
-  const bW = 110   // building width
-  const bH = 200   // building height (prominent — current role)
+  const bH = BUILDING_H[company.id] ?? 140
+  const bW = company.current ? 100 : 80
   const bX = cx - bW / 2
   const bY = groundY - bH
 
-  // Ambient glow behind building — amber for Merkle/current
-  const glow = ctx.createRadialGradient(cx, bY + bH * 0.3, 0, cx, bY + bH * 0.3, 160)
-  glow.addColorStop(0, 'rgba(180,130,40,0.12)')
+  // Amber glow — brighter for current role
+  const glowR = company.current ? 140 : 95
+  const glow = ctx.createRadialGradient(cx, bY + bH * 0.35, 0, cx, bY + bH * 0.35, glowR)
+  glow.addColorStop(0, company.current ? 'rgba(180,130,40,0.14)' : 'rgba(150,110,30,0.08)')
   glow.addColorStop(1, 'rgba(180,130,40,0)')
   ctx.fillStyle = glow
   ctx.beginPath()
-  ctx.arc(cx, bY + bH * 0.3, 160, 0, Math.PI * 2)
+  ctx.arc(cx, bY + bH * 0.35, glowR, 0, Math.PI * 2)
   ctx.fill()
 
   // Building body
   ctx.fillStyle = '#1e2a20'
   ctx.fillRect(bX, bY, bW, bH)
 
-  // Window grid — 3×4
+  // Window grid
+  const cols = bW > 90 ? 3 : 2
+  const rows = Math.max(2, Math.floor(bH / 46))
+  const winW = 14
+  const winH = 20
+  const colGap = (bW - cols * winW) / (cols + 1)
+  const rowGap = (bH - rows * winH) / (rows + 1)
   ctx.fillStyle = 'rgba(180,200,160,0.18)'
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 3; col++) {
-      ctx.fillRect(bX + 14 + col * 32, bY + 16 + row * 44, 18, 28)
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      ctx.fillRect(
+        bX + colGap + c * (winW + colGap),
+        bY + rowGap + r * (winH + rowGap),
+        winW, winH
+      )
     }
   }
 
   // Roof accent
-  ctx.fillStyle = '#c89030'
-  ctx.fillRect(bX - 6, bY - 5, bW + 12, 5)
+  ctx.fillStyle = company.current ? '#c89030' : '#a07828'
+  ctx.fillRect(bX - 4, bY - 4, bW + 8, 4)
 
-  // Company name above building
-  ctx.fillStyle = 'rgba(220,190,100,0.95)'
-  ctx.font = 'bold 15px Georgia, serif'
+  // Company name
+  ctx.fillStyle = company.current ? 'rgba(220,190,100,0.95)' : 'rgba(200,170,80,0.85)'
+  ctx.font = `bold ${company.current ? 13 : 12}px Georgia, serif`
   ctx.textAlign = 'center'
-  ctx.fillText(company.company, cx, bY - 18)
+  ctx.fillText(company.company, cx, bY - 14)
 
-  // Company description (smaller, faint)
-  ctx.fillStyle = 'rgba(180,160,80,0.60)'
-  ctx.font = '10px Georgia, serif'
-  ctx.fillText(company.companyDescription, cx, bY - 6)
+  // Period
+  ctx.fillStyle = 'rgba(160,140,60,0.55)'
+  ctx.font = '9px Georgia, serif'
+  ctx.fillText(company.period, cx, bY - 4)
 }
 
-function drawRoleText(
+function drawCompanyText(
   ctx: CanvasRenderingContext2D,
+  company: WorkExperience,
   cx: number,
   groundY: number
 ): void {
-  const bH = 200
+  const bH = BUILDING_H[company.id] ?? 140
   const bY = groundY - bH
-  const textX = cx
-  let y = bY - 36
+  let y = bY - 26
 
-  // Role + period
-  ctx.fillStyle = 'rgba(200,210,180,0.80)'
+  // Role
+  ctx.fillStyle = 'rgba(200,210,180,0.75)'
+  ctx.font = 'bold 10px Georgia, serif'
+  ctx.textAlign = 'center'
+  ctx.fillText(company.role, cx, y)
+  y -= 14
+
+  // First bullet (one wrapped line)
+  ctx.fillStyle = 'rgba(160,180,150,0.50)'
+  ctx.font = '9px Georgia, serif'
+  const line = wrapText(ctx, `· ${company.bullets[0]}`, 200)[0]
+  if (line) ctx.fillText(line, cx, y)
+}
+
+// ─── Consulting structure ──────────────────────────────────────────────────────
+
+function drawConsultingStructure(
+  ctx: CanvasRenderingContext2D,
+  engagement: ConsultingEngagement,
+  cx: number,
+  groundY: number
+): void {
+  const bW = 64
+  const bH = 80
+  const bX = cx - bW / 2
+  const bY = groundY - bH
+
+  // Teal glow
+  const glow = ctx.createRadialGradient(cx, bY + bH * 0.4, 0, cx, bY + bH * 0.4, 70)
+  glow.addColorStop(0, 'rgba(40,180,140,0.10)')
+  glow.addColorStop(1, 'rgba(40,180,140,0)')
+  ctx.fillStyle = glow
+  ctx.beginPath()
+  ctx.arc(cx, bY + bH * 0.4, 70, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Structure body
+  ctx.fillStyle = '#162828'
+  ctx.fillRect(bX, bY, bW, bH)
+
+  // Windows — 2×2
+  ctx.fillStyle = 'rgba(60,200,160,0.14)'
+  ctx.fillRect(bX + 8,  bY + 12, 14, 18)
+  ctx.fillRect(bX + 42, bY + 12, 14, 18)
+  ctx.fillRect(bX + 8,  bY + 42, 14, 18)
+  ctx.fillRect(bX + 42, bY + 42, 14, 18)
+
+  // Teal roof accent
+  ctx.fillStyle = '#40a090'
+  ctx.fillRect(bX - 3, bY - 3, bW + 6, 3)
+
+  // Client name
+  ctx.fillStyle = 'rgba(80,210,170,0.85)'
   ctx.font = 'bold 11px Georgia, serif'
   ctx.textAlign = 'center'
-  ctx.fillText(`${company.role}  ·  ${company.period}`, textX, y)
-  y -= 18
+  ctx.fillText(engagement.client, cx, bY - 22)
 
-  // First 2 bullets
-  ctx.fillStyle = 'rgba(160,180,150,0.55)'
-  ctx.font = '10px Georgia, serif'
-  const bullets = company.bullets.slice(0, 2)
-  for (const bullet of bullets) {
-    const lines = wrapText(ctx, `· ${bullet}`, 260).slice(0, 2)
-    for (const line of lines) {
-      ctx.fillText(line, textX, y)
-      y -= 13
-    }
-    y -= 2
-  }
+  // Period
+  ctx.fillStyle = 'rgba(80,200,160,0.55)'
+  ctx.font = '9px Georgia, serif'
+  ctx.fillText(engagement.period, cx, bY - 12)
+
+  // Description (truncated)
+  ctx.fillStyle = 'rgba(60,180,140,0.40)'
+  ctx.font = '8px Georgia, serif'
+  const desc = engagement.clientDescription.length > 30
+    ? engagement.clientDescription.slice(0, 30) + '…'
+    : engagement.clientDescription
+  ctx.fillText(desc, cx, bY - 3)
 }
+
+// ─── Public draw function ──────────────────────────────────────────────────────
 
 export function drawWorkRoom(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
   groundY: number
 ): void {
-  const cx = canvasWidth * 0.5
-  drawBuilding(ctx, cx, groundY)
-  drawRoleText(ctx, cx, groundY)
+  COMPANIES.forEach((company, i) => {
+    const cx = canvasWidth * COMPANY_X[i]
+    drawCompanyBuilding(ctx, company, cx, groundY)
+    drawCompanyText(ctx, company, cx, groundY)
+  })
+
+  drawConsultingStructure(ctx, RAISEMATTERS, canvasWidth * CONSULTING_X['raisematters'], groundY)
+  drawConsultingStructure(ctx, WOHANA,       canvasWidth * CONSULTING_X['wohana'],       groundY)
 }
