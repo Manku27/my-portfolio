@@ -8,6 +8,43 @@
   --color-text-muted: #6b7a8d;
 }
 
+@font-face {
+  font-family: 'Trajan Pro';
+  src: url('/fonts/Trajan-Pro.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Trajan Pro';
+  src: url('/fonts/Trajan-Pro-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Perpetua';
+  src: url('/fonts/Perpetua-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Perpetua';
+  src: url('/fonts/Perpetua-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  --font-heading: 'Trajan Pro', serif;
+  --font-body: 'Perpetua', Georgia, serif;
+}
+
 html,
 body {
   background: var(--color-bg);
@@ -15,5 +52,4 @@ body {
   height: 100%;
   margin: 0;
   overflow-x: hidden;
-  font-family: system-ui, sans-serif;
 }
