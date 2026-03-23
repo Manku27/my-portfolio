@@ -5,6 +5,7 @@ import { drawRoomBackground, drawRoomEnvironment, LAMP_X_FACTOR, lampBulbY } fro
 import { drawParallaxBackground, drawParallaxForeground, STALK_CONFIGS, MAX_SWAY } from './ParallaxLayer'
 import { lerp } from '@/utils/lerp'
 import { createParticles, drawParticles } from './Particles'
+import { initBricks, updateBricks, checkBrickCollisions, drawBricks } from './Bricks'
 
 const SPEED = 340        // px/s horizontal
 const GRAVITY = 1800     // px/s²
@@ -47,6 +48,9 @@ export function GameCanvas() {
 
     // Ambient particles — created once, drifted via time each frame
     const particles = createParticles()
+
+    // Bricks — interactive world objects
+    const bricks = initBricks()
 
     // Lamp glow (0=resting, 1=fully hovered)
     let lampGlow = 0
@@ -93,6 +97,13 @@ export function GameCanvas() {
       velY += GRAVITY * delta
       charY += velY * delta
       const ground = groundY()
+
+      // Brick collision — head hits brick underside while moving up
+      const brickResult = checkBrickCollisions(bricks, charX, charY, velY, CHARACTER_W, ground, canvas.width)
+      velY  = brickResult.newVelY
+      charY = brickResult.newCharY
+      updateBricks(bricks, delta)
+
       if (charY + CHARACTER_H >= ground) {
         charY = ground - CHARACTER_H
         velY = 0
@@ -124,10 +135,11 @@ export function GameCanvas() {
       // time in seconds for particle drift
       const time = timestamp / 1000
 
-      // Draw order: bg → parallax bg → room env → particles → parallax fg → character
+      // Draw order: bg → parallax bg → room env → bricks → particles → parallax fg → character
       drawRoomBackground(ctx, currentRoom, canvas.width, canvas.height)
       drawParallaxBackground(ctx, charX, canvas.width, canvas.height, ground)
       drawRoomEnvironment(ctx, currentRoom, canvas.width, canvas.height, ground, lampGlow)
+      drawBricks(ctx, bricks, cameraX, ground, canvas.width)
       if (currentRoom === 1) {
         drawParticles(ctx, particles, canvas.width, canvas.height, time)
       }
