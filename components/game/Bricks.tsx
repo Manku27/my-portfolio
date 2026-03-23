@@ -12,11 +12,17 @@ export interface Brick {
 }
 
 // Bricks placed in spawn room (room 1).
-// yFromGround chosen so they're hittable with a single jump (max ~235px).
+// Three-step staircase leading up to the name platform.
+// At 1280×720 the name top sits ~498px above ground (canvasH*0.25 - fontSize*0.5
+// where fontSize = canvasW*0.042). Jump height with JUMP_VEL=920, GRAVITY=1800 = 235px.
+//   Ground  → step 1: 120px jump  ✓
+//   step 1  → step 2: 160px jump  ✓
+//   step 2  → step 3: 120px jump  ✓
+//   step 3  → name:   ~158px jump ✓  (name at ~498, step 3 at 340)
 const BRICK_DEFS: Omit<Brick, 'shake'>[] = [
-  { room: 1, xFrac: 0.36, yFromGround: 140, w: 52, h: 20 },
-  { room: 1, xFrac: 0.54, yFromGround: 200, w: 52, h: 20 },
-  { room: 1, xFrac: 0.68, yFromGround: 155, w: 52, h: 20 },
+  { room: 1, xFrac: 0.30, yFromGround: 120, w: 80, h: 20 },  // step 1 — easy first hop
+  { room: 1, xFrac: 0.42, yFromGround: 240, w: 80, h: 20 },  // step 2 — mid
+  { room: 1, xFrac: 0.55, yFromGround: 340, w: 80, h: 20 },  // step 3 — just below name
 ]
 
 export function initBricks(): Brick[] {

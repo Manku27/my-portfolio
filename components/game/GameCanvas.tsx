@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef } from 'react'
 import { drawCharacter, CHARACTER_W, CHARACTER_H } from './Character'
-import { drawRoomBackground, drawRoomEnvironment, LAMP_X_FACTOR, lampBulbY } from './Room'
+import { drawRoomBackground, drawRoomEnvironment, getNameLayout, LAMP_X_FACTOR, lampBulbY } from './Room'
 import { drawParallaxBackground, drawParallaxForeground, STALK_CONFIGS, MAX_SWAY } from './ParallaxLayer'
 import { lerp } from '@/utils/lerp'
 import { createParticles, drawParticles } from './Particles'
@@ -69,6 +69,9 @@ export function GameCanvas() {
     // Lamp glow (0=resting, 1=fully hovered)
     let lampGlow = 0
 
+    // Name platform glow (0=off, 1=fully lit) — driven by character standing on it
+    let nameGlow = 0
+
     // Charm menu state
     let charmOpen     = false
     let charmProgress = 0      // 0=closed, 1=fully open (animated)
@@ -114,7 +117,7 @@ export function GameCanvas() {
     let jumpsLeft  = 2
     let currentRoom = SPAWN_ROOM
 
-    let rafId: number
+    let rafId = 0
     let lastTimestamp = 0
 
     const loop = (timestamp: number) => {
@@ -149,12 +152,37 @@ export function GameCanvas() {
       }
       updateBricks(bricks, delta)
 
+      // Name platform collision — uses measured layout so it matches what's drawn
+      const np = currentRoom === 1 ? getNameLayout(ctx, canvas.width, canvas.height) : undefined
+      if (np && velY > 0) {
+        const npWorldX = SPAWN_ROOM * canvas.width + np.platformX
+        const hOverlap = charX + CHARACTER_W > npWorldX && charX < npWorldX + np.platformW
+        if (hOverlap) {
+          const feet = charY + CHARACTER_H
+          if (feet >= np.platformY && feet < np.platformY + 20) {
+            velY       = 0
+            charY      = np.platformY - CHARACTER_H
+            isGrounded = true
+            jumpsLeft  = 2
+          }
+        }
+      }
+
       if (charY + CHARACTER_H >= ground) {
         charY = ground - CHARACTER_H
         velY = 0
         isGrounded = true
         jumpsLeft = 2
       }
+
+      // Name glow — light up when character stands on name platform
+      let nameGlowTarget = 0
+      if (np && isGrounded && velY === 0) {
+        const npWorldX = SPAWN_ROOM * canvas.width + np.platformX
+        const hOverlap = charX + CHARACTER_W > npWorldX && charX < npWorldX + np.platformW
+        if (hOverlap && Math.abs((charY + CHARACTER_H) - np.platformY) < 6) nameGlowTarget = 1
+      }
+      nameGlow = lerp(nameGlow, nameGlowTarget, 0.08)
 
       // Camera
       const cameraX = currentRoom * canvas.width
@@ -183,7 +211,7 @@ export function GameCanvas() {
       // Draw order: bg → parallax bg → room env → bricks → particles → parallax fg → character
       drawRoomBackground(ctx, currentRoom, canvas.width, canvas.height)
       drawParallaxBackground(ctx, charX, canvas.width, canvas.height, ground)
-      drawRoomEnvironment(ctx, currentRoom, canvas.width, canvas.height, ground, lampGlow)
+      drawRoomEnvironment(ctx, currentRoom, canvas.width, canvas.height, ground, lampGlow, nameGlow, np)
       drawBricks(ctx, bricks, cameraX, ground, canvas.width)
       if (currentRoom === 1) {
         drawParticles(ctx, particles, canvas.width, canvas.height, time)
@@ -199,7 +227,21 @@ export function GameCanvas() {
       rafId = requestAnimationFrame(loop)
     }
 
-    rafId = requestAnimationFrame(loop)
+    // Preload Trajan Pro Bold via FontFace API so ctx.measureText is reliable.
+    // CSS @font-face alone doesn't guarantee OTF fonts appear in document.fonts.
+    const preloadFonts = async () => {
+      try {
+        const bold = new FontFace('Trajan Pro', 'url(/fonts/Trajan-Pro-Bold.otf)', { weight: '700', style: 'normal' })
+        await bold.load()
+        document.fonts.add(bold)
+      } catch {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[Game] Trajan Pro Bold failed to preload — falling back to serif for measurements')
+        }
+      }
+      rafId = requestAnimationFrame(loop)
+    }
+    preloadFonts()
 
     return () => {
       cancelAnimationFrame(rafId)
@@ -211,5 +253,5 @@ export function GameCanvas() {
     }
   }, [])
 
-  return <canvas ref={canvasRef} className="fixed inset-0" />
+  return <canvas ref={canvasRef} className="fixed inset-0 w-full h-full" />
 }

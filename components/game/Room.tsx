@@ -1,6 +1,7 @@
 // Room rendering — two-phase draw so parallax layers sit between bg and environment.
 import { drawTimelineRoom } from './TimelineRoom'
 import { drawWorkRoom } from './WorkRoom'
+import { profile } from '@/lib/data/index'
 // roomIndex: 0 = work (left), 1 = spawn (centre), 2 = timeline (right)
 
 const ROOM_TINTS = ['#070a06', '#050a0a', '#050d0a']
@@ -128,6 +129,120 @@ function drawVignette(
   ctx.fillRect(w * 0.88, 0, w * 0.12, h)
 }
 
+// ─── Name platform layout ─────────────────────────────────────────────────────
+// Uses measureText (reliable after FontFace preload in GameCanvas).
+// Single line when the full name fits at a readable size; two lines only as a
+// fallback for narrow viewports. Caller passes layout to both draw and collision.
+
+const NAME_CENTRE_Y_FAC   = 0.25   // centreY = canvasH * this
+const SINGLE_TARGET_FAC   = 0.84   // full name spans this fraction of canvas on single line
+const MIN_SINGLE_FONT     = 40     // px — below this single line is unreadably small, use two lines
+const TWO_LINE_TARGET_FAC = 0.84   // last word spans this fraction on each two-line row
+
+export interface NameLayout {
+  twoLine:   boolean
+  fontSize:  number
+  platformY: number   // canvas Y of top of text bounding box (collision top)
+  platformW: number   // width of widest line (platform collision width)
+  platformX: number   // canvas X of left edge (centred)
+}
+
+export function getNameLayout(
+  ctx: CanvasRenderingContext2D,
+  canvasW: number,
+  canvasH: number
+): NameLayout {
+  const centreY = canvasH * NAME_CENTRE_Y_FAC
+  const [, last] = profile.name.split(' ')
+
+  // Measure at 100px reference — fonts are preloaded so this is reliable
+  ctx.save()
+  ctx.font = `700 100px 'Trajan Pro', serif`
+  const fullW = ctx.measureText(profile.name).width
+  const lastW = ctx.measureText(last).width
+  ctx.restore()
+
+  // Guard: font not yet rasterised returns near-zero widths
+  if (fullW < 10 || lastW < 10) {
+    const fallbackFs = Math.floor(canvasW * 0.08)
+    const fallbackW  = canvasW * 0.74
+    const fallbackX  = (canvasW - fallbackW) / 2
+    const lineH      = fallbackFs * 1.15
+    return {
+      twoLine: true, fontSize: fallbackFs,
+      platformY: centreY - lineH / 2 - fallbackFs / 2,
+      platformW: fallbackW, platformX: fallbackX,
+    }
+  }
+
+  // Single-line: scale so full name = SINGLE_TARGET_FAC of canvas width
+  const singleFontSize = Math.floor(canvasW * SINGLE_TARGET_FAC * 100 / fullW)
+
+  if (singleFontSize >= MIN_SINGLE_FONT) {
+    const platformW = fullW * singleFontSize / 100
+    const platformX = (canvasW - platformW) / 2
+    const platformY = centreY - singleFontSize / 2
+    return { twoLine: false, fontSize: singleFontSize, platformY, platformW, platformX }
+  }
+
+  // Two-line fallback: scale so last word (longer) = TWO_LINE_TARGET_FAC of canvas
+  const twoFontSize = Math.floor(canvasW * TWO_LINE_TARGET_FAC * 100 / lastW)
+  const lineH       = twoFontSize * 1.15
+  const platformW   = lastW * twoFontSize / 100
+  const platformX   = (canvasW - platformW) / 2
+  const platformY   = centreY - lineH / 2 - twoFontSize / 2
+  return { twoLine: true, fontSize: twoFontSize, platformY, platformW, platformX }
+}
+
+function drawNamePlatform(
+  ctx: CanvasRenderingContext2D,
+  layout: NameLayout,
+  canvasW: number,
+  canvasH: number,
+  glow = 0
+): void {
+  const { twoLine, fontSize } = layout
+  const centreY = canvasH * NAME_CENTRE_Y_FAC
+  const [first, last] = profile.name.split(' ')
+
+  // Atmospheric glow when character stands on the name
+  if (glow > 0.01) {
+    const glowR = canvasW * 0.44
+    const g = ctx.createRadialGradient(canvasW / 2, centreY, 0, canvasW / 2, centreY, glowR)
+    g.addColorStop(0,   `rgba(200,255,245,${glow * 0.22})`)
+    g.addColorStop(0.5, `rgba(140,230,220,${glow * 0.10})`)
+    g.addColorStop(1,   'rgba(100,200,200,0)')
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.arc(canvasW / 2, centreY, glowR, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  ctx.font         = `700 ${fontSize}px 'Trajan Pro', serif`
+  ctx.fillStyle    = `rgba(255,255,255,${0.88 + glow * 0.12})`
+  ctx.textAlign    = 'center'
+  ctx.textBaseline = 'middle'
+
+  let tagY: number
+  if (twoLine) {
+    const lineH = fontSize * 1.15
+    ctx.fillText(first, canvasW / 2, centreY - lineH / 2)
+    ctx.fillText(last,  canvasW / 2, centreY + lineH / 2)
+    tagY = centreY + lineH / 2 + fontSize * 0.75
+  } else {
+    ctx.fillText(profile.name, canvasW / 2, centreY)
+    tagY = centreY + fontSize * 0.75
+  }
+
+  // Tagline — Perpetua, muted, below name block
+  const tagFontSize = Math.max(16, Math.floor(fontSize * 0.28))
+  ctx.font      = `400 ${tagFontSize}px 'Perpetua', serif`
+  ctx.fillStyle = 'rgba(180,220,210,0.65)'
+  ctx.fillText(profile.tagline, canvasW / 2, tagY)
+
+  ctx.textAlign = 'left'
+}
+
 // ─── Phase 1: background fill ─────────────────────────────────────────────────
 // Called before parallax layers.
 
@@ -154,7 +269,9 @@ export function drawRoomEnvironment(
   canvasWidth: number,
   canvasHeight: number,
   groundY: number,
-  lampGlow = 0
+  lampGlow = 0,
+  nameGlow = 0,
+  nameLayout?: NameLayout
 ): void {
   // Ground plane
   ctx.fillStyle = '#152e2e'
@@ -164,6 +281,8 @@ export function drawRoomEnvironment(
     drawSpawnGroundGlow(ctx, canvasWidth, groundY)
     drawLampPost(ctx, canvasWidth * LAMP_X_FACTOR, groundY, lampGlow)
     drawVignette(ctx, canvasWidth, canvasHeight)
+    const layout = nameLayout ?? getNameLayout(ctx, canvasWidth, canvasHeight)
+    drawNamePlatform(ctx, layout, canvasWidth, canvasHeight, nameGlow)
   } else {
     // Basic ground edge for other rooms
     ctx.fillStyle = 'rgba(80,200,160,0.10)'
