@@ -4,6 +4,7 @@
 const CHARMS: Array<{ id: string; label: string; color: string }> = [
   { id: 'work',     label: 'Work',     color: '#c89030' },
   { id: 'timeline', label: 'Timeline', color: '#30c8a0' },
+  { id: 'about',    label: 'About',    color: '#80c0e0' },
   { id: 'books',    label: 'Books',    color: '#9060e0' },
   { id: 'movies',   label: 'Movies',   color: '#e06030' },
   { id: 'writing',  label: 'Writing',  color: '#40b8df' },
@@ -183,7 +184,7 @@ export function drawCharmMenu(
   ctx.textAlign  = 'center'
   ctx.fillStyle  = 'rgba(60,120,95,0.45)'
   ctx.font       = '11px Georgia, serif'
-  ctx.fillText('← → ↑ ↓  navigate    Tab / Esc  close', W / 2, panelY + panelH - 10)
+  ctx.fillText('← → ↑ ↓  navigate    Enter  go    Tab / Esc  close', W / 2, panelY + panelH - 10)
 
   ctx.restore()
 }

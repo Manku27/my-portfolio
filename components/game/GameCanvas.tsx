@@ -355,6 +355,42 @@ export function GameCanvas() {
       }
       rafId = requestAnimationFrame(loop)
     }
+    // Charm routing — handle hash navigation from charm menu
+    const navigateToCharm = (id: string) => {
+      charmOpen = false
+      const gnd = groundY()
+
+      if (id === 'work') {
+        worldMode  = 'horizontal'
+        charX      = 0 * canvas.width + canvas.width * 0.5 - CHARACTER_W / 2
+        charY      = gnd - CHARACTER_H
+        velY       = 0; isGrounded = true; jumpsLeft = 2
+
+      } else if (id === 'timeline') {
+        worldMode  = 'horizontal'
+        charX      = 2 * canvas.width + canvas.width * 0.5 - CHARACTER_W / 2
+        charY      = gnd - CHARACTER_H
+        velY       = 0; isGrounded = true; jumpsLeft = 2
+
+      } else if (id === 'about') {
+        worldMode      = 'vertical'
+        charVX         = canvas.width / 2 - CHARACTER_W / 2
+        charWorldY     = 0
+        currentSection = 0
+        velY           = 120; isGrounded = false; jumpsLeft = 1
+      }
+      // books, movies, writing, games — worlds not yet built, no-op for now
+    }
+
+    const onHashChange = () => {
+      const id = window.location.hash.slice(1)
+      if (id) navigateToCharm(id)
+    }
+    window.addEventListener('hashchange', onHashChange)
+
+    // Navigate on initial hash if present (e.g. direct link)
+    if (window.location.hash) navigateToCharm(window.location.hash.slice(1))
+
     preloadFonts()
 
     return () => {
@@ -364,6 +400,7 @@ export function GameCanvas() {
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('click', onMouseClick)
+      window.removeEventListener('hashchange', onHashChange)
     }
   }, [])
 
