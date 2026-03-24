@@ -363,14 +363,14 @@ export function GameCanvas() {
       if (id === 'work') {
         worldMode  = 'horizontal'
         charX      = 0 * canvas.width + canvas.width * 0.5 - CHARACTER_W / 2
-        charY      = gnd - CHARACTER_H
-        velY       = 0; isGrounded = true; jumpsLeft = 2
+        charY      = -CHARACTER_H * 3
+        velY       = 0; isGrounded = false; jumpsLeft = 1
 
       } else if (id === 'timeline') {
         worldMode  = 'horizontal'
         charX      = 2 * canvas.width + canvas.width * 0.5 - CHARACTER_W / 2
-        charY      = gnd - CHARACTER_H
-        velY       = 0; isGrounded = true; jumpsLeft = 2
+        charY      = -CHARACTER_H * 3
+        velY       = 0; isGrounded = false; jumpsLeft = 1
 
       } else if (id === 'about') {
         worldMode      = 'vertical'
