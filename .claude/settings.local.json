@@ -7,7 +7,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
       "Bash(taskkill /PID 18132 /F)",
       "Bash(cmd.exe /c \"taskkill /PID 18132 /F\")",
-      "Bash(powershell -Command \"Stop-Process -Id 18132 -Force\")"
+      "Bash(powershell -Command \"Stop-Process -Id 18132 -Force\")",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__list_pages"
     ]
   }
 }
