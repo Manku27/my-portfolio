@@ -360,7 +360,13 @@ export function GameCanvas() {
       charmOpen = false
       const gnd = groundY()
 
-      if (id === 'work') {
+      if (id === 'home') {
+        worldMode  = 'horizontal'
+        charX      = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2
+        charY      = -CHARACTER_H * 3
+        velY       = 0; isGrounded = false; jumpsLeft = 1
+
+      } else if (id === 'work') {
         worldMode  = 'horizontal'
         charX      = 0 * canvas.width + canvas.width * 0.5 - CHARACTER_W / 2
         charY      = -CHARACTER_H * 3

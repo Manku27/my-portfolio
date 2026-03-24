@@ -2,6 +2,7 @@
 // Drawn directly on the game canvas (not DOM). Press Tab to open/close.
 
 const CHARMS: Array<{ id: string; label: string; color: string }> = [
+  { id: 'home',     label: 'Home',     color: '#d0e8e0' },
   { id: 'work',     label: 'Work',     color: '#c89030' },
   { id: 'timeline', label: 'Timeline', color: '#30c8a0' },
   { id: 'about',    label: 'About',    color: '#80c0e0' },
