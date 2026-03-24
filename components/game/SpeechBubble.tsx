@@ -4,7 +4,7 @@
 // Perpetua for body, Trajan Pro for title.
 
 import { wrapText } from '@/utils/wrapText'
-import type { WorkExperience, ConsultingEngagement } from '@/lib/types'
+import type { WorkExperience, ConsultingEngagement, TimelineEntry } from '@/lib/types'
 
 // ─── Content type ─────────────────────────────────────────────────────────────
 
@@ -35,6 +35,23 @@ export function consultingToBubble(c: ConsultingEngagement): BubbleContent {
     meta:        `${c.period}  ·  ${c.location}`,
     description: c.clientDescription,
     bullets:     c.bullets,
+  }
+}
+
+const CATEGORY_LABEL: Record<string, string> = {
+  work:     'Career',
+  personal: 'Personal',
+  projects: 'Project',
+  writing:  'Writing',
+}
+
+export function timelineToBubble(e: TimelineEntry): BubbleContent {
+  return {
+    title:       e.title,
+    role:        CATEGORY_LABEL[e.category] ?? e.category,
+    meta:        e.date.slice(0, 7).replace('-', ' / '),
+    description: e.body,
+    bullets:     e.tags ?? [],
   }
 }
 
@@ -118,13 +135,18 @@ export function drawSpeechBubble(
     lineH:  metaFs * 1.7,
   })
 
-  if (content.description) lines.push({
-    text:   content.description,
-    font:   `400 ${metaFs}px 'Perpetua', serif`,
-    color:  'rgba(150,190,155,0.50)',
-    indent: 0,
-    lineH:  metaFs * 1.7,
-  })
+  if (content.description) {
+    const descFont = `400 ${metaFs}px 'Perpetua', serif`
+    ctx.font = descFont
+    const wrappedDesc = wrapText(ctx, content.description, innerW)
+    wrappedDesc.forEach(l => lines.push({
+      text:   l,
+      font:   descFont,
+      color:  'rgba(150,190,155,0.50)',
+      indent: 0,
+      lineH:  metaFs * 1.7,
+    }))
+  }
 
   // Divider
   lines.push({ text: '', font: '', color: '', indent: 0, lineH: metaFs * 1.4, isDivider: true })

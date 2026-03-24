@@ -4,7 +4,7 @@ import { drawWorkRoom } from './WorkRoom'
 import { profile } from '@/lib/data/index'
 // roomIndex: 0 = work (left), 1 = spawn (centre), 2 = timeline (right)
 
-const ROOM_TINTS = ['#070a06', '#050a0a', '#050d0a']
+const ROOM_TINTS = ['#070a06', '#050a0a', '#050d0a', '#05080e']
 
 const LAMP_STEM_H = 90
 const LAMP_BULB_R = 10
@@ -455,8 +455,8 @@ export function drawRoomEnvironment(
     drawWorkRoom(ctx, canvasWidth, groundY)
   }
 
-  // Timeline room — room 2
-  if (roomIndex === 2) {
-    drawTimelineRoom(ctx, canvasWidth, groundY)
+  // Timeline rooms — 2 and 3
+  if (roomIndex === 2 || roomIndex === 3) {
+    drawTimelineRoom(ctx, roomIndex, canvasWidth, groundY)
   }
 }

@@ -4,6 +4,7 @@ import { drawCharacter, CHARACTER_W, CHARACTER_H } from './Character'
 import { drawRoomBackground, drawRoomEnvironment, getNameLayout, LAMP_X_FACTOR, lampBulbY, PIT_X_FAC, PIT_W_FAC } from './Room'
 import { drawAboutSection, getAboutPlatforms, ABOUT_SECTION_COUNT, RETURN_SECTION } from './AboutRoom'
 import { getWorkTriggers, type WorkTrigger } from './WorkRoom'
+import { getTimelineTriggers, type TimelineTrigger } from './TimelineRoom'
 import { drawSpeechBubble, type BubbleContent } from './SpeechBubble'
 import { drawParallaxBackground, drawParallaxForeground, STALK_CONFIGS, MAX_SWAY } from './ParallaxLayer'
 import { lerp } from '@/utils/lerp'
@@ -15,7 +16,7 @@ const SPEED = 340        // px/s horizontal
 const GRAVITY = 1800     // px/s²
 const JUMP_VEL = 920     // px/s upward
 const GROUND_OFFSET = 64 // px from canvas bottom
-const ROOM_COUNT = 3     // 0=work, 1=spawn, 2=timeline
+const ROOM_COUNT = 4     // 0=work, 1=spawn, 2=timeline, 3=timeline (older)
 const SPAWN_ROOM = 1
 
 const LAMP_HOVER_RADIUS = 70 // px — distance at which lamp starts glowing
@@ -233,7 +234,7 @@ export function GameCanvas() {
           swayValues[i] = lerp(swayValues[i], mouseNorm * MAX_SWAY * amplitude, lerpRate)
         }
 
-        // Speech bubble — proximity to work buildings in room 0
+        // Speech bubble — proximity triggers
         if (currentRoom === 0) {
           const triggers = getWorkTriggers(canvas.width, ground)
           let hit: WorkTrigger | null = null
@@ -242,7 +243,21 @@ export function GameCanvas() {
           }
           if (hit) {
             bubbleContent  = hit.content
-            bubbleAnchorX  = hit.worldX        // room 0: cameraX=0, world X = screen X
+            bubbleAnchorX  = hit.worldX   // room 0: cameraX=0, worldX = screenX
+            bubbleAnchorY  = hit.roofY
+            bubbleProgress = lerp(bubbleProgress, 1, 0.15)
+          } else {
+            bubbleProgress = lerp(bubbleProgress, 0, 0.12)
+          }
+        } else if (currentRoom >= 2) {
+          const triggers = getTimelineTriggers(canvas.width, ground)
+          let hit: TimelineTrigger | null = null
+          for (const t of triggers) {
+            if (Math.abs(charX + CHARACTER_W / 2 - t.worldX) < t.radius) { hit = t; break }
+          }
+          if (hit) {
+            bubbleContent  = hit.content
+            bubbleAnchorX  = hit.worldX - currentRoom * canvas.width  // world → screen X
             bubbleAnchorY  = hit.roofY
             bubbleProgress = lerp(bubbleProgress, 1, 0.15)
           } else {
