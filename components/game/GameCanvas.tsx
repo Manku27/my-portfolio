@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useRef } from 'react'
 import { drawCharacter, CHARACTER_W, CHARACTER_H } from './Character'
-import { drawRoomBackground, drawRoomEnvironment, getNameLayout, LAMP_X_FACTOR, lampBulbY } from './Room'
+import { drawRoomBackground, drawRoomEnvironment, getNameLayout, LAMP_X_FACTOR, lampBulbY, PIT_X_FAC, PIT_W_FAC } from './Room'
+import { drawAboutSection, getAboutPlatforms, ABOUT_SECTION_COUNT, RETURN_SECTION } from './AboutRoom'
 import { drawParallaxBackground, drawParallaxForeground, STALK_CONFIGS, MAX_SWAY } from './ParallaxLayer'
 import { lerp } from '@/utils/lerp'
 import { createParticles, drawParticles } from './Particles'
@@ -72,6 +73,12 @@ export function GameCanvas() {
     // Name platform glow (0=off, 1=fully lit) — driven by character standing on it
     let nameGlow = 0
 
+    // Vertical world (About Me) state
+    let worldMode      = 'horizontal' as 'horizontal' | 'vertical'
+    let charWorldY     = 0     // world-space Y in vertical mode
+    let charVX         = 0     // world-space X in vertical mode (canvas-local, 0..canvasW)
+    let currentSection = 0
+
     // Charm menu state
     let charmOpen     = false
     let charmProgress = 0      // 0=closed, 1=fully open (animated)
@@ -98,10 +105,22 @@ export function GameCanvas() {
         return // block all other keys when menu is open
       }
       keys.add(e.code)
-      if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && jumpsLeft > 0) {
-        velY = -JUMP_VEL
-        isGrounded = false
-        jumpsLeft--
+      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+        // Return from About Me world when standing on the last platform
+        if (worldMode === 'vertical' && currentSection === RETURN_SECTION && isGrounded) {
+          worldMode  = 'horizontal'
+          charX      = SPAWN_ROOM * canvas.width + canvas.width * PIT_X_FAC - CHARACTER_W - 8
+          charY      = groundY() - CHARACTER_H
+          velY       = -JUMP_VEL * 0.45
+          isGrounded = false
+          jumpsLeft  = 1
+          return
+        }
+        if (jumpsLeft > 0) {
+          velY = -JUMP_VEL
+          isGrounded = false
+          jumpsLeft--
+        }
       }
     }
     const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code)
@@ -127,97 +146,145 @@ export function GameCanvas() {
       // Animate charm menu open/close
       charmProgress = lerp(charmProgress, charmOpen ? 1 : 0, Math.min(1, delta * 10))
 
-      // Horizontal — blocked while charm menu is open
-      if (!charmOpen) {
-      if (keys.has('ArrowLeft')  || keys.has('KeyA')) charX -= SPEED * delta
-      if (keys.has('ArrowRight') || keys.has('KeyD')) charX += SPEED * delta
-      }
-      charX = Math.max(0, Math.min(ROOM_COUNT * canvas.width - CHARACTER_W, charX))
-
-      // Room snap
-      currentRoom = Math.max(0, Math.min(ROOM_COUNT - 1, Math.floor(charX / canvas.width)))
-
-      // Vertical
-      velY += GRAVITY * delta
-      charY += velY * delta
       const ground = groundY()
 
-      // Brick collision — head hits underside or feet land on top
-      const brickResult = checkBrickCollisions(bricks, charX, charY, velY, CHARACTER_W, CHARACTER_H, ground, canvas.width)
-      velY  = brickResult.newVelY
-      charY = brickResult.newCharY
-      if (brickResult.landed) {
-        isGrounded = true
-        jumpsLeft  = 2
-      }
-      updateBricks(bricks, delta)
+      if (worldMode === 'horizontal') {
+        // ── Horizontal movement ─────────────────────────────────────────────
+        if (!charmOpen) {
+          if (keys.has('ArrowLeft')  || keys.has('KeyA')) charX -= SPEED * delta
+          if (keys.has('ArrowRight') || keys.has('KeyD')) charX += SPEED * delta
+        }
+        charX = Math.max(0, Math.min(ROOM_COUNT * canvas.width - CHARACTER_W, charX))
 
-      // Name platform collision — uses measured layout so it matches what's drawn
-      const np = currentRoom === 1 ? getNameLayout(ctx, canvas.width, canvas.height) : undefined
-      if (np && velY > 0) {
-        const npWorldX = SPAWN_ROOM * canvas.width + np.platformX
-        const hOverlap = charX + CHARACTER_W > npWorldX && charX < npWorldX + np.platformW
-        if (hOverlap) {
-          const feet = charY + CHARACTER_H
-          if (feet >= np.platformY && feet < np.platformY + 20) {
-            velY       = 0
-            charY      = np.platformY - CHARACTER_H
-            isGrounded = true
-            jumpsLeft  = 2
+        // Room snap
+        currentRoom = Math.max(0, Math.min(ROOM_COUNT - 1, Math.floor(charX / canvas.width)))
+
+        // Gravity + position
+        velY  += GRAVITY * delta
+        charY += velY * delta
+
+        // Brick collision
+        const brickResult = checkBrickCollisions(bricks, charX, charY, velY, CHARACTER_W, CHARACTER_H, ground, canvas.width)
+        velY  = brickResult.newVelY
+        charY = brickResult.newCharY
+        if (brickResult.landed) { isGrounded = true; jumpsLeft = 2 }
+        updateBricks(bricks, delta)
+
+        // Name platform collision
+        const np = currentRoom === 1 ? getNameLayout(ctx, canvas.width, canvas.height) : undefined
+        if (np && velY > 0) {
+          const npWorldX = SPAWN_ROOM * canvas.width + np.platformX
+          const hOverlap = charX + CHARACTER_W > npWorldX && charX < npWorldX + np.platformW
+          if (hOverlap) {
+            const feet = charY + CHARACTER_H
+            if (feet >= np.platformY && feet < np.platformY + 20) {
+              velY = 0; charY = np.platformY - CHARACTER_H; isGrounded = true; jumpsLeft = 2
+            }
           }
         }
-      }
 
-      if (charY + CHARACTER_H >= ground) {
-        charY = ground - CHARACTER_H
-        velY = 0
-        isGrounded = true
-        jumpsLeft = 2
-      }
+        // Pit detection — skip ground clamp when falling through pit in spawn room
+        const pitWorldL = SPAWN_ROOM * canvas.width + canvas.width * PIT_X_FAC
+        const pitWorldR = pitWorldL + canvas.width * PIT_W_FAC
+        const charMidX  = charX + CHARACTER_W / 2
+        const overPit   = currentRoom === 1 && charMidX > pitWorldL && charMidX < pitWorldR
 
-      // Name glow — light up when character stands on name platform
-      let nameGlowTarget = 0
-      if (np && isGrounded && velY === 0) {
-        const npWorldX = SPAWN_ROOM * canvas.width + np.platformX
-        const hOverlap = charX + CHARACTER_W > npWorldX && charX < npWorldX + np.platformW
-        if (hOverlap && Math.abs((charY + CHARACTER_H) - np.platformY) < 6) nameGlowTarget = 1
-      }
-      nameGlow = lerp(nameGlow, nameGlowTarget, 0.08)
+        if (!overPit && charY + CHARACTER_H >= ground) {
+          charY = ground - CHARACTER_H; velY = 0; isGrounded = true; jumpsLeft = 2
+        } else if (overPit && charY + CHARACTER_H >= ground) {
+          // Feet at ground level over the pit — enter the vertical world immediately
+          worldMode      = 'vertical'
+          charVX         = canvas.width / 2 - CHARACTER_W / 2
+          charWorldY     = 0
+          currentSection = 0
+          velY           = 120
+          isGrounded     = false
+          jumpsLeft      = 1
+        }
 
-      // Camera
-      const cameraX = currentRoom * canvas.width
-      const screenX = charX - cameraX
+        // Name glow
+        let nameGlowTarget = 0
+        if (np && isGrounded && velY === 0) {
+          const npWorldX = SPAWN_ROOM * canvas.width + np.platformX
+          const hOverlap = charX + CHARACTER_W > npWorldX && charX < npWorldX + np.platformW
+          if (hOverlap && Math.abs((charY + CHARACTER_H) - np.platformY) < 6) nameGlowTarget = 1
+        }
+        nameGlow = lerp(nameGlow, nameGlowTarget, 0.08)
 
-      // Independent stalk sway — each lerps at its own rate toward cursor target
-      for (let i = 0; i < STALK_CONFIGS.length; i++) {
-        const { lerpRate, amplitude } = STALK_CONFIGS[i]
-        swayValues[i] = lerp(swayValues[i], mouseNorm * MAX_SWAY * amplitude, lerpRate)
-      }
+        // Lamp glow
+        if (currentRoom === 1) {
+          const dist = Math.hypot(mouseX - canvas.width * LAMP_X_FACTOR, mouseY - lampBulbY(ground))
+          lampGlow = lerp(lampGlow, Math.max(0, 1 - dist / LAMP_HOVER_RADIUS), 0.1)
+        } else {
+          lampGlow = lerp(lampGlow, 0, 0.1)
+        }
 
-      // Lamp glow — compute hover distance only in spawn room
-      if (currentRoom === 1) {
-        const lampScreenX = canvas.width * LAMP_X_FACTOR
-        const lampBY      = lampBulbY(ground)
-        const dist = Math.hypot(mouseX - lampScreenX, mouseY - lampBY)
-        const glowTarget = Math.max(0, 1 - dist / LAMP_HOVER_RADIUS)
-        lampGlow = lerp(lampGlow, glowTarget, 0.1)
+        // Stalk sway
+        for (let i = 0; i < STALK_CONFIGS.length; i++) {
+          const { lerpRate, amplitude } = STALK_CONFIGS[i]
+          swayValues[i] = lerp(swayValues[i], mouseNorm * MAX_SWAY * amplitude, lerpRate)
+        }
+
       } else {
-        lampGlow = lerp(lampGlow, 0, 0.1)
+        // ── Vertical world (About Me) ────────────────────────────────────────
+        if (!charmOpen) {
+          if (keys.has('ArrowLeft')  || keys.has('KeyA')) charVX -= SPEED * delta
+          if (keys.has('ArrowRight') || keys.has('KeyD')) charVX += SPEED * delta
+        }
+        charVX = Math.max(0, Math.min(canvas.width - CHARACTER_W, charVX))
+
+        velY       += GRAVITY * delta
+        charWorldY += velY * delta
+
+        // Ceiling — can't go above the top of the world
+        if (charWorldY < 0) { charWorldY = 0; velY = Math.max(0, velY) }
+
+        // Section snap
+        currentSection = Math.max(0, Math.min(ABOUT_SECTION_COUNT - 1,
+          Math.floor(charWorldY / canvas.height)))
+
+        // Platform collision
+        const sectionTopY = currentSection * canvas.height
+        const localY      = charWorldY - sectionTopY
+        const platforms   = getAboutPlatforms(currentSection, canvas.width, canvas.height)
+        isGrounded = false
+        for (const plat of platforms) {
+          if (velY > 0) {
+            const feet = localY + CHARACTER_H
+            if (feet >= plat.y && feet < plat.y + 20) {
+              const inX = charVX + CHARACTER_W > plat.x && charVX < plat.x + plat.w
+              if (inX) {
+                velY       = 0
+                charWorldY = sectionTopY + plat.y - CHARACTER_H
+                isGrounded = true
+                jumpsLeft  = 2
+              }
+            }
+          }
+        }
       }
 
       // time in seconds for particle drift
       const time = timestamp / 1000
 
-      // Draw order: bg → parallax bg → room env → bricks → particles → parallax fg → character
-      drawRoomBackground(ctx, currentRoom, canvas.width, canvas.height)
-      drawParallaxBackground(ctx, charX, canvas.width, canvas.height, ground)
-      drawRoomEnvironment(ctx, currentRoom, canvas.width, canvas.height, ground, lampGlow, nameGlow, np)
-      drawBricks(ctx, bricks, cameraX, ground, canvas.width)
-      if (currentRoom === 1) {
-        drawParticles(ctx, particles, canvas.width, canvas.height, time)
+      // ── Draw ──────────────────────────────────────────────────────────────
+      if (worldMode === 'horizontal') {
+        const cameraX = currentRoom * canvas.width
+        const screenX = charX - cameraX
+        drawRoomBackground(ctx, currentRoom, canvas.width, canvas.height)
+        drawParallaxBackground(ctx, charX, canvas.width, canvas.height, ground)
+        drawRoomEnvironment(ctx, currentRoom, canvas.width, canvas.height, ground, lampGlow, nameGlow,
+          currentRoom === 1 ? getNameLayout(ctx, canvas.width, canvas.height) : undefined)
+        drawBricks(ctx, bricks, cameraX, ground, canvas.width)
+        if (currentRoom === 1) drawParticles(ctx, particles, canvas.width, canvas.height, time)
+        drawParallaxForeground(ctx, charX, canvas.width, ground, swayValues)
+        drawCharacter(ctx, screenX, charY)
+      } else {
+        const sectionTopY = currentSection * canvas.height
+        const vertScreenY = charWorldY - sectionTopY
+        drawAboutSection(ctx, currentSection, canvas.width, canvas.height)
+        drawCharacter(ctx, charVX, vertScreenY)
       }
-      drawParallaxForeground(ctx, charX, canvas.width, ground, swayValues)
-      drawCharacter(ctx, screenX, charY)
 
       // Charm menu — drawn last so it sits on top of everything
       if (charmProgress > 0.01) {
