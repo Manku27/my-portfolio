@@ -5,6 +5,7 @@
 import { workExperience, consultingEngagements } from '@/lib/data/index'
 import { wrapText } from '@/utils/wrapText'
 import type { WorkExperience, ConsultingEngagement } from '@/lib/types'
+import { workToBubble, consultingToBubble, type BubbleContent } from './SpeechBubble'
 
 // workExperience is most-recent-first; reverse for left=oldest layout
 const COMPANIES = [...workExperience].reverse()
@@ -169,6 +170,44 @@ function drawConsultingStructure(
     ? engagement.clientDescription.slice(0, 30) + '…'
     : engagement.clientDescription
   ctx.fillText(desc, cx, bY - 3)
+}
+
+// ─── Trigger zones ────────────────────────────────────────────────────────────
+
+export interface WorkTrigger {
+  id:      string
+  worldX:  number   // screen X in room 0 (cameraX = 0 in work room)
+  roofY:   number   // Y of building roof
+  radius:  number   // horizontal proximity in px
+  content: BubbleContent
+}
+
+export function getWorkTriggers(canvasW: number, groundY: number): WorkTrigger[] {
+  const triggers: WorkTrigger[] = COMPANIES.map((company, i) => ({
+    id:      company.id,
+    worldX:  canvasW * COMPANY_X[i],
+    roofY:   groundY - (BUILDING_H[company.id] ?? 140),
+    radius:  70,
+    content: workToBubble(company),
+  }))
+
+  triggers.push({
+    id:      RAISEMATTERS.id,
+    worldX:  canvasW * CONSULTING_X['raisematters'],
+    roofY:   groundY - 80,
+    radius:  55,
+    content: consultingToBubble(RAISEMATTERS),
+  })
+
+  triggers.push({
+    id:      WOHANA.id,
+    worldX:  canvasW * CONSULTING_X['wohana'],
+    roofY:   groundY - 80,
+    radius:  55,
+    content: consultingToBubble(WOHANA),
+  })
+
+  return triggers
 }
 
 // ─── Public draw function ──────────────────────────────────────────────────────

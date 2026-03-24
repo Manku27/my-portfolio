@@ -3,6 +3,8 @@ import { useEffect, useRef } from 'react'
 import { drawCharacter, CHARACTER_W, CHARACTER_H } from './Character'
 import { drawRoomBackground, drawRoomEnvironment, getNameLayout, LAMP_X_FACTOR, lampBulbY, PIT_X_FAC, PIT_W_FAC } from './Room'
 import { drawAboutSection, getAboutPlatforms, ABOUT_SECTION_COUNT, RETURN_SECTION } from './AboutRoom'
+import { getWorkTriggers, type WorkTrigger } from './WorkRoom'
+import { drawSpeechBubble, type BubbleContent } from './SpeechBubble'
 import { drawParallaxBackground, drawParallaxForeground, STALK_CONFIGS, MAX_SWAY } from './ParallaxLayer'
 import { lerp } from '@/utils/lerp'
 import { createParticles, drawParticles } from './Particles'
@@ -72,6 +74,12 @@ export function GameCanvas() {
 
     // Name platform glow (0=off, 1=fully lit) — driven by character standing on it
     let nameGlow = 0
+
+    // Speech bubble state
+    let bubbleProgress   = 0
+    let bubbleContent: BubbleContent | null = null
+    let bubbleAnchorX    = 0
+    let bubbleAnchorY    = 0
 
     // Vertical world (About Me) state
     let worldMode      = 'horizontal' as 'horizontal' | 'vertical'
@@ -225,6 +233,25 @@ export function GameCanvas() {
           swayValues[i] = lerp(swayValues[i], mouseNorm * MAX_SWAY * amplitude, lerpRate)
         }
 
+        // Speech bubble — proximity to work buildings in room 0
+        if (currentRoom === 0) {
+          const triggers = getWorkTriggers(canvas.width, ground)
+          let hit: WorkTrigger | null = null
+          for (const t of triggers) {
+            if (Math.abs(charX + CHARACTER_W / 2 - t.worldX) < t.radius) { hit = t; break }
+          }
+          if (hit) {
+            bubbleContent  = hit.content
+            bubbleAnchorX  = hit.worldX        // room 0: cameraX=0, world X = screen X
+            bubbleAnchorY  = hit.roofY
+            bubbleProgress = lerp(bubbleProgress, 1, 0.15)
+          } else {
+            bubbleProgress = lerp(bubbleProgress, 0, 0.12)
+          }
+        } else {
+          bubbleProgress = lerp(bubbleProgress, 0, 0.18)
+        }
+
       } else {
         // ── Vertical world (About Me) ────────────────────────────────────────
         if (!charmOpen) {
@@ -284,6 +311,11 @@ export function GameCanvas() {
         const vertScreenY = charWorldY - sectionTopY
         drawAboutSection(ctx, currentSection, canvas.width, canvas.height)
         drawCharacter(ctx, charVX, vertScreenY)
+      }
+
+      // Speech bubble — drawn above world, below charm menu
+      if (bubbleContent && bubbleProgress > 0.01) {
+        drawSpeechBubble(ctx, bubbleAnchorX, bubbleAnchorY, bubbleContent, bubbleProgress, canvas.width, canvas.height)
       }
 
       // Charm menu — drawn last so it sits on top of everything
