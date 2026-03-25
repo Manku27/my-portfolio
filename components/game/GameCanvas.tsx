@@ -47,7 +47,7 @@ import {
   getCharmAtPoint,
   getCharmId,
 } from "./CharmMenu";
-import { drawSocialHUD, getSocialHudHit, getSocialUrl } from "./SocialHUD";
+import { drawSocialHUD, getSocialHudHit, getSocialUrl, SOCIAL_COUNT } from "./SocialHUD";
 
 const SPEED = 340; // px/s horizontal
 const GRAVITY = 1800; // px/s²
@@ -97,8 +97,16 @@ export function GameCanvas() {
       // Social HUD icon click — always active, takes priority
       const hudHit = getSocialHudHit(e.clientX, e.clientY);
       if (hudHit !== -1) {
-        const url = getSocialUrl(hudHit);
-        if (url) window.open(url, "_blank", "noopener,noreferrer");
+        if (hudHit === SOCIAL_COUNT) {
+          // Resume download
+          const a = document.createElement("a");
+          a.href = "/resume.pdf";
+          a.download = "Mayank_Jhunjhunwala_Resume.pdf";
+          a.click();
+        } else {
+          const url = getSocialUrl(hudHit);
+          if (url) window.open(url, "_blank", "noopener,noreferrer");
+        }
         return;
       }
       if (!charmOpen) return;
