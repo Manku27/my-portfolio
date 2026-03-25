@@ -223,7 +223,7 @@ function drawNamePlatform(
   }
 
   ctx.font         = `700 ${fontSize}px 'Trajan Pro', serif`
-  ctx.fillStyle    = `rgba(255,255,255,${0.88 + glow * 0.12})`
+  ctx.fillStyle    = `rgba(210,242,236,${0.75 + glow * 0.18})`
   ctx.textAlign    = 'center'
   ctx.textBaseline = 'middle'
 
