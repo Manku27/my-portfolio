@@ -393,18 +393,27 @@ export function GameCanvas() {
       rafId = requestAnimationFrame(loop)
     }
 
-    // Preload Trajan Pro Bold via FontFace API so ctx.measureText is reliable.
-    // CSS @font-face alone doesn't guarantee OTF fonts appear in document.fonts.
+    // Preload all four game fonts via FontFace API before the first frame.
+    // CSS @font-face alone doesn't guarantee fonts appear in document.fonts in time.
     const preloadFonts = async () => {
-      try {
-        const bold = new FontFace('Trajan Pro', 'url(/fonts/Trajan-Pro-Bold.otf)', { weight: '700', style: 'normal' })
-        await bold.load()
-        document.fonts.add(bold)
-      } catch {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[Game] Trajan Pro Bold failed to preload — falling back to serif for measurements')
+      const fontDefs = [
+        { family: 'Trajan Pro', url: '/fonts/Trajan-Pro.otf',      weight: '400' },
+        { family: 'Trajan Pro', url: '/fonts/Trajan-Pro-Bold.otf', weight: '700' },
+        { family: 'Perpetua',   url: '/fonts/Perpetua-Regular.woff2', weight: '400' },
+        { family: 'Perpetua',   url: '/fonts/Perpetua-Bold.woff2',    weight: '700' },
+      ]
+      await Promise.all(fontDefs.map(async ({ family, url, weight }) => {
+        try {
+          const face = new FontFace(family, `url(${url})`, { weight, style: 'normal' })
+          await face.load()
+          document.fonts.add(face)
+        } catch {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn(`[Game] Font failed to load: ${family} weight ${weight} — ${url}`)
+          }
         }
-      }
+      }))
+      await document.fonts.ready
       rafId = requestAnimationFrame(loop)
     }
     // Charm routing — handle hash navigation from charm menu

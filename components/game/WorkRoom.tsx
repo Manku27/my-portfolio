@@ -81,13 +81,13 @@ function drawCompanyBuilding(
 
   // Company name
   ctx.fillStyle = company.current ? 'rgba(220,190,100,0.95)' : 'rgba(200,170,80,0.85)'
-  ctx.font = `bold ${company.current ? 13 : 12}px Georgia, serif`
+  ctx.font = `700 ${company.current ? 13 : 12}px 'Trajan Pro', serif`
   ctx.textAlign = 'center'
   ctx.fillText(company.company, cx, bY - 14)
 
   // Period
   ctx.fillStyle = 'rgba(160,140,60,0.55)'
-  ctx.font = '9px Georgia, serif'
+  ctx.font = `400 9px 'Perpetua', serif`
   ctx.fillText(company.period, cx, bY - 4)
 }
 
@@ -103,14 +103,14 @@ function drawCompanyText(
 
   // Role
   ctx.fillStyle = 'rgba(200,210,180,0.75)'
-  ctx.font = 'bold 10px Georgia, serif'
+  ctx.font = `700 10px 'Trajan Pro', serif`
   ctx.textAlign = 'center'
   ctx.fillText(company.role, cx, y)
   y -= 14
 
   // First bullet (one wrapped line)
   ctx.fillStyle = 'rgba(160,180,150,0.50)'
-  ctx.font = '9px Georgia, serif'
+  ctx.font = `400 9px 'Perpetua', serif`
   const line = wrapText(ctx, `· ${company.bullets[0]}`, 200)[0]
   if (line) ctx.fillText(line, cx, y)
 }
@@ -154,18 +154,18 @@ function drawConsultingStructure(
 
   // Client name
   ctx.fillStyle = 'rgba(80,210,170,0.85)'
-  ctx.font = 'bold 11px Georgia, serif'
+  ctx.font = `700 11px 'Trajan Pro', serif`
   ctx.textAlign = 'center'
   ctx.fillText(engagement.client, cx, bY - 22)
 
   // Period
   ctx.fillStyle = 'rgba(80,200,160,0.55)'
-  ctx.font = '9px Georgia, serif'
+  ctx.font = `400 9px 'Perpetua', serif`
   ctx.fillText(engagement.period, cx, bY - 12)
 
   // Description (truncated)
   ctx.fillStyle = 'rgba(60,180,140,0.40)'
-  ctx.font = '8px Georgia, serif'
+  ctx.font = `400 8px 'Perpetua', serif`
   const desc = engagement.clientDescription.length > 30
     ? engagement.clientDescription.slice(0, 30) + '…'
     : engagement.clientDescription

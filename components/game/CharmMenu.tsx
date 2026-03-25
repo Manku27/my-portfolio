@@ -114,7 +114,7 @@ export function drawCharmMenu(
   // ── Title ─────────────────────────────────────────────────────────────────
   ctx.textAlign = 'center'
   ctx.fillStyle = 'rgba(190,240,220,0.90)'
-  ctx.font = '500 15px Georgia, serif'
+  ctx.font = `700 15px 'Trajan Pro', serif`
   ctx.fillText('C H A R M S', W / 2, panelY + 28)
 
   // Thin decorative rule under title
@@ -177,14 +177,14 @@ export function drawCharmMenu(
     // Label
     ctx.textAlign    = 'center'
     ctx.fillStyle    = active ? 'rgba(220,255,240,0.95)' : 'rgba(100,160,130,0.65)'
-    ctx.font         = `${active ? '600' : '400'} 12px Georgia, serif`
+    ctx.font         = `${active ? '700' : '400'} 12px 'Trajan Pro', serif`
     ctx.fillText(charm.label, ox, oy + SLOT_R + 18)
   }
 
   // ── Navigation hint ───────────────────────────────────────────────────────
   ctx.textAlign  = 'center'
   ctx.fillStyle  = 'rgba(60,120,95,0.45)'
-  ctx.font       = '11px Georgia, serif'
+  ctx.font       = `400 11px 'Perpetua', serif`
   ctx.fillText('← → ↑ ↓  navigate    Enter  go    Tab / Esc  close', W / 2, panelY + panelH - 10)
 
   ctx.restore()
