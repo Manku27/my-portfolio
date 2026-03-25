@@ -25,14 +25,29 @@ I write technical content, publish open-source tooling with real adoption, and b
       handle: 'Manku27',
     },
     {
-      platform: 'Medium',
-      url: 'https://medium.com/@jjmayank98',
-      handle: '@jjmayank98',
+      platform: 'Gmail',
+      url: 'mailto:jjmayank98@gmail.com',
+      handle: 'jjmayank98@gmail.com',
     },
     {
       platform: 'YouTube',
       url: 'https://www.youtube.com/@mankuDevJS',
       handle: '@mankuDevJS',
+    },
+    {
+      platform: 'Medium',
+      url: 'https://medium.com/@jjmayank98',
+      handle: '@jjmayank98',
+    },
+    {
+      platform: 'WhatsApp',
+      url: 'https://wa.me/917477367506',
+      handle: '+91 7477367506',
+    },
+    {
+      platform: 'Discord',
+      url: 'https://discord.com/users/mank.you',
+      handle: 'mank.you',
     },
   ],
   skills: [
