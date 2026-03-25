@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef } from 'react'
 import { drawCharacter, CHARACTER_W, CHARACTER_H } from './Character'
+import { KNIGHT_SPRITE_PATH, ANIM_CONFIG, type AnimationState, type SpriteFrame } from '@/lib/sprites/knight-frames'
 import { drawRoomBackground, drawRoomEnvironment, getNameLayout, LAMP_X_FACTOR, lampBulbY, PIT_X_FAC, PIT_W_FAC } from './Room'
 import { drawAboutSection, getAboutPlatforms, ABOUT_SECTION_COUNT, RETURN_SECTION } from './AboutRoom'
 import { getWorkTriggers, type WorkTrigger } from './WorkRoom'
@@ -60,6 +61,21 @@ export function GameCanvas() {
     }
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('click', onMouseClick)
+
+    // Sprite sheet — load once, fall back to white rect until ready
+    let spriteSheet: HTMLImageElement | null = null
+    const knightImg = new Image()
+    knightImg.onload = () => { spriteSheet = knightImg }
+    knightImg.src = KNIGHT_SPRITE_PATH
+
+    // Animation state
+    let animState: AnimationState = 'idle'
+    let animFrame = 0
+    let animTimer = 0
+    let facingLeft = false
+    let wasGrounded = true
+    let landTimer = 0
+    const LAND_HOLD = 2 / 8  // hold land pose for 2 frames at 8 fps
 
     // Per-stalk independent sway values (one lerped state per stalk type)
     const swayValues = STALK_CONFIGS.map(() => 0)
@@ -306,6 +322,42 @@ export function GameCanvas() {
         }
       }
 
+      // ── Animation state ────────────────────────────────────────────────
+      const movingLeft  = !charmOpen && (keys.has('ArrowLeft') || keys.has('KeyA'))
+      const movingRight = !charmOpen && (keys.has('ArrowRight') || keys.has('KeyD'))
+      const moving = movingLeft || movingRight
+      if (movingLeft)  facingLeft = true
+      if (movingRight) facingLeft = false
+
+      const justLanded = !wasGrounded && isGrounded
+      wasGrounded = isGrounded
+
+      if (!isGrounded) {
+        if (animState !== 'jump') { animState = 'jump'; animFrame = 0; animTimer = 0 }
+      } else if (justLanded) {
+        animState = 'land'; animFrame = 0; animTimer = 0; landTimer = LAND_HOLD
+      } else if (animState === 'land') {
+        landTimer -= delta
+        if (landTimer <= 0) { animState = moving ? 'walk' : 'idle'; animFrame = 0; animTimer = 0 }
+      } else {
+        const target: AnimationState = moving ? 'walk' : 'idle'
+        if (target !== animState) { animState = target; animFrame = 0; animTimer = 0 }
+      }
+
+      animTimer += delta
+      const animCfg = ANIM_CONFIG[animState]
+      const frameDur = 1 / animCfg.fps
+      while (animTimer >= frameDur) {
+        animTimer -= frameDur
+        if (animFrame < animCfg.frames.length - 1) {
+          animFrame++
+        } else if (animCfg.loop) {
+          animFrame = 0
+        }
+        // else hold last frame (falling, land pose)
+      }
+      const currentFrame: SpriteFrame = animCfg.frames[animFrame]
+
       // time in seconds for particle drift
       const time = timestamp / 1000
 
@@ -320,12 +372,12 @@ export function GameCanvas() {
         drawBricks(ctx, bricks, cameraX, ground, canvas.width)
         if (currentRoom === 1) drawParticles(ctx, particles, canvas.width, canvas.height, time)
         drawParallaxForeground(ctx, charX, canvas.width, ground, swayValues)
-        drawCharacter(ctx, screenX, charY)
+        drawCharacter(ctx, screenX, charY, spriteSheet, currentFrame, facingLeft)
       } else {
         const sectionTopY = currentSection * canvas.height
         const vertScreenY = charWorldY - sectionTopY
         drawAboutSection(ctx, currentSection, canvas.width, canvas.height)
-        drawCharacter(ctx, charVX, vertScreenY)
+        drawCharacter(ctx, charVX, vertScreenY, spriteSheet, currentFrame, facingLeft)
       }
 
       // Speech bubble — drawn above world, below charm menu
