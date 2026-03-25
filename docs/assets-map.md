@@ -48,10 +48,22 @@ variation at room edges.
 | `grass_03_idle0015.png` | Thin single stalk with leaves | Foreground layer — replaces code-drawn stalk B |
 | `simple_grass0007.png` | Blade grass cluster | Foreground layer — replaces code-drawn stalk C/D |
 
-These three replace ALL the rectangle-based foreground stalks in
-ParallaxLayer.tsx. They tile horizontally with the same parallax factor
-(~0.8). Each sways independently based on cursor position — apply the
-existing sway logic to the draw X position of each plant sprite.
+These three replace the rectangle-based foreground stalks in
+ParallaxLayer.tsx. They tile horizontally and sway with a time-based
+sin oscillation (already implemented in drawForeLayer).
+
+---
+
+## Background — Parallax layers (code-drawn, no assets)
+
+The far and mid background layers are rendered entirely in canvas code —
+no sprite assets. See "Objective 4 — Background atmosphere" in
+build-objectives.md for the full spec of what replaces the current
+dark triangles and rectangles.
+
+**Area_Green_Path.png** — this asset was evaluated and rejected for
+background use. The 117px tall horizontal strip does not blend well
+as a tiled background layer at any position. Do not use it.
 
 ---
 
@@ -62,18 +74,14 @@ existing sway logic to the draw X position of each plant sprite.
 | `Controller_Dialogue_0000_top.png` | Ornate scroll divider — top | Top border of every speech bubble |
 | `Controller_Dialogue_0001_bot.png` | Ornate scroll divider — bottom | Bottom border of every speech bubble |
 
-These are the authentic Hollow Knight dialogue box decorations. Use them
-as the top and bottom borders of the speech bubble system (Objective 6).
-
 **How to use:**
 - Draw the speech bubble dark background rectangle
 - Draw `Controller_Dialogue_0000_top.png` scaled to the bubble width at the top edge
-- Render the text content (Trajan Pro title, Perpetua body) in the middle
+- Render text content (Trajan Pro title, Perpetua body) in the middle
 - Draw `Controller_Dialogue_0001_bot.png` scaled to the bubble width at the bottom edge
 
-The decorations are white/light on transparent — they sit naturally
-against the dark speech bubble background. Scale width to match bubble
-width, maintain aspect ratio for height.
+The decorations are white/light on transparent — sit naturally against
+the dark speech bubble background.
 
 ---
 
@@ -81,14 +89,13 @@ width, maintain aspect ratio for height.
 
 | File | Description | Usage |
 |---|---|---|
-| `head_cracked_option.png` | Knight's cracked mask, face only | Charm menu player icon, or UI indicator for current player position |
+| `head_cracked_option.png` | Knight's cracked mask, face only | Charm menu player icon |
 
 ---
 
 ## Character — Ambient Glow
 
-Not a file asset — rendered in code. The character has a soft radial
-glow halo drawn behind the sprite each frame:
+Not a file asset — rendered in code. Drawn behind the sprite each frame:
 
 ```typescript
 // Draw BEFORE the sprite so glow sits behind it
@@ -100,19 +107,61 @@ const gradient = ctx.createRadialGradient(
   centerX, centerY, 0,
   centerX, centerY, glowRadius
 )
-gradient.addColorStop(0, 'rgba(180, 230, 220, 0.18)')  // soft teal-white
+gradient.addColorStop(0, 'rgba(180, 230, 220, 0.18)')
 gradient.addColorStop(1, 'rgba(180, 230, 220, 0)')
 ctx.fillStyle = gradient
 ctx.beginPath()
 ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2)
 ctx.fill()
-// Then draw sprite on top
 ```
 
-Glow radius: ~70px. Max opacity at centre: 0.18. Should feel like
-ambient bioluminescence, not a spotlight. Cold teal-white matches
-the world palette. The glow makes the character and immediate
-surroundings subtly more visible against the dark world.
+Glow radius ~70px. Max opacity 0.18. Cold teal-white.
+
+---
+
+## Background atmosphere — code-drawn spec
+
+Reference: Hollow Knight Greenpath bench scene and title screen.
+Three tonal bands top-to-bottom:
+1. Top — deep blue-purple darkness
+2. Mid — soft luminous teal-white volumetric bloom (the cave light)
+3. Bottom — darker, where the ground and foliage sit
+
+### Volumetric light bloom (replaces far layer triangles)
+A large radial gradient centred upper-mid screen:
+
+```typescript
+// Replaces drawFarLayer() entirely
+const bloomX = w * 0.5
+const bloomY = h * 0.38
+const bloomR = w * 0.55
+
+const bloom = ctx.createRadialGradient(bloomX, bloomY, 0, bloomX, bloomY, bloomR)
+bloom.addColorStop(0,    'rgba(60, 160, 140, 0.22)')   // teal-white core
+bloom.addColorStop(0.35, 'rgba(30, 100, 110, 0.14)')   // mid teal
+bloom.addColorStop(0.7,  'rgba(10,  40,  70, 0.10)')   // fading to blue-purple
+bloom.addColorStop(1,    'rgba(5,   10,  25, 0)')       // edge transparent
+ctx.fillStyle = bloom
+ctx.fillRect(0, 0, w, h)
+```
+
+Slight parallax on bloomX — shifts very gently with charX * 0.05 so
+the light source feels fixed in the world, not pinned to screen.
+
+### Hanging vines from top (replaces mid layer rectangles)
+Dark organic silhouettes descending from the top edge:
+
+```typescript
+// Replaces drawMidLayer() entirely
+// Tile vine clusters across the width, parallax factor 0.25
+// Each cluster: a curved tapered shape, 40-80px wide, 120-220px tall
+// Colour: rgba(5, 18, 22, 0.88) — near-black with dark teal tinge
+// Shape: use bezier curves for organic taper, not rectangles
+// Vary heights per cluster for natural feel
+```
+
+The vine shapes sit against the bloom light, creating depth — dark
+foreground against bright mid-ground, same as the reference images.
 
 ---
 
@@ -120,17 +169,16 @@ surroundings subtly more visible against the dark world.
 
 | File | Reason |
 |---|---|
-| `title.png` | Hollow Knight game logo — identifiable IP branding, skip entirely |
+| `title.png` | Hollow Knight game logo — identifiable IP branding |
+| `Area_Green_Path.png` | Evaluated, does not blend as background layer |
 
 ---
 
 ## File placement
 
-All assets live in `public/sprites/`. Reference in code as:
-`/sprites/filename.png`
-
-Load via HTMLImageElement, cache in a shared asset map so each image
-loads once. Never load assets inside the render loop.
+All assets in `public/sprites/`. Reference as `/sprites/filename.png`.
+Load via the `loadImage` utility in `utils/loadAssets.ts`. Never load
+inside the render loop.
 
 ---
 
@@ -174,7 +222,3 @@ export async function loadAllAssets() {
   ])
 }
 ```
-
-Call `loadAllAssets()` before the game loop starts. Canvas should not
-render until this resolves. The knight sprite loader and this can be
-combined into a single pre-render promise.

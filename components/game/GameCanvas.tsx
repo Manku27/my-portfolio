@@ -2,13 +2,14 @@
 import { useEffect, useRef } from 'react'
 import { drawCharacter, CHARACTER_W, CHARACTER_H } from './Character'
 import { KNIGHT_SPRITE_PATH, ANIM_CONFIG, type AnimationState, type SpriteFrame } from '@/lib/sprites/knight-frames'
-import { drawRoomBackground, drawRoomEnvironment, getNameLayout, LAMP_X_FACTOR, lampBulbY, PIT_X_FAC, PIT_W_FAC } from './Room'
+import { drawRoomBackground, drawRoomEnvironment, drawSpawnBench, getNameLayout, getLampX, lampBulbY, PIT_X_FAC, PIT_W_FAC, type SpawnAssets } from './Room'
 import { drawAboutSection, getAboutPlatforms, ABOUT_SECTION_COUNT, RETURN_SECTION } from './AboutRoom'
 import { getWorkTriggers, type WorkTrigger } from './WorkRoom'
 import { getTimelineTriggers, type TimelineTrigger } from './TimelineRoom'
 import { drawSpeechBubble, type BubbleContent } from './SpeechBubble'
-import { drawParallaxBackground, drawParallaxForeground, STALK_CONFIGS, MAX_SWAY } from './ParallaxLayer'
+import { drawParallaxBackground, drawParallaxForeground, type GrassImages } from './ParallaxLayer'
 import { lerp } from '@/utils/lerp'
+import { loadImage } from '@/utils/loadAssets'
 import { createParticles, drawParticles } from './Particles'
 import { initBricks, updateBricks, checkBrickCollisions, drawBricks } from './Bricks'
 import { drawCharmMenu, CHARM_COUNT, getCharmAtPoint, getCharmId } from './CharmMenu'
@@ -41,11 +42,9 @@ export function GameCanvas() {
     // Mouse state
     let mouseX = -9999
     let mouseY = -9999
-    let mouseNorm = 0 // X normalised -1..1 for sway
     const onMouseMove = (e: MouseEvent) => {
-      mouseX    = e.clientX
-      mouseY    = e.clientY
-      mouseNorm = (e.clientX / (canvas.width || 1280) - 0.5) * 2
+      mouseX = e.clientX
+      mouseY = e.clientY
       if (charmOpen) {
         const hit = getCharmAtPoint(mouseX, mouseY, canvas.width, canvas.height)
         if (hit !== -1) charmSelected = hit
@@ -68,6 +67,11 @@ export function GameCanvas() {
     knightImg.onload = () => { spriteSheet = knightImg }
     knightImg.src = KNIGHT_SPRITE_PATH
 
+    // Spawn room assets — loaded in preloadFonts before first frame
+    let spawnAssets: SpawnAssets = { groundImg: null, poleImg: null, sign1Img: null, sign2Img: null, benchImg: null }
+    let grassImgs:   GrassImages = { a: null, b: null, c: null }
+    let platImg:     HTMLImageElement | null = null
+
     // Animation state
     let animState: AnimationState = 'idle'
     let animFrame = 0
@@ -76,9 +80,6 @@ export function GameCanvas() {
     let wasGrounded = true
     let landTimer = 0
     const LAND_HOLD = 2 / 8  // hold land pose for 2 frames at 8 fps
-
-    // Per-stalk independent sway values (one lerped state per stalk type)
-    const swayValues = STALK_CONFIGS.map(() => 0)
 
     // Ambient particles — created once, drifted via time each frame
     const particles = createParticles()
@@ -238,16 +239,10 @@ export function GameCanvas() {
 
         // Lamp glow
         if (currentRoom === 1) {
-          const dist = Math.hypot(mouseX - canvas.width * LAMP_X_FACTOR, mouseY - lampBulbY(ground))
+          const dist = Math.hypot(mouseX - getLampX(canvas.width), mouseY - lampBulbY(ground, canvas.width))
           lampGlow = lerp(lampGlow, Math.max(0, 1 - dist / LAMP_HOVER_RADIUS), 0.1)
         } else {
           lampGlow = lerp(lampGlow, 0, 0.1)
-        }
-
-        // Stalk sway
-        for (let i = 0; i < STALK_CONFIGS.length; i++) {
-          const { lerpRate, amplitude } = STALK_CONFIGS[i]
-          swayValues[i] = lerp(swayValues[i], mouseNorm * MAX_SWAY * amplitude, lerpRate)
         }
 
         // Speech bubble — proximity triggers
@@ -368,10 +363,12 @@ export function GameCanvas() {
         drawRoomBackground(ctx, currentRoom, canvas.width, canvas.height)
         drawParallaxBackground(ctx, charX, canvas.width, canvas.height, ground)
         drawRoomEnvironment(ctx, currentRoom, canvas.width, canvas.height, ground, lampGlow, nameGlow,
-          currentRoom === 1 ? getNameLayout(ctx, canvas.width, canvas.height) : undefined)
-        drawBricks(ctx, bricks, cameraX, ground, canvas.width)
+          currentRoom === 1 ? getNameLayout(ctx, canvas.width, canvas.height) : undefined,
+          currentRoom === 1 ? spawnAssets : undefined)
+        drawBricks(ctx, bricks, cameraX, ground, canvas.width, platImg)
         if (currentRoom === 1) drawParticles(ctx, particles, canvas.width, canvas.height, time)
-        drawParallaxForeground(ctx, charX, canvas.width, ground, swayValues)
+        drawParallaxForeground(ctx, canvas.width, ground, time, grassImgs)
+        if (currentRoom === 1) drawSpawnBench(ctx, canvas.width, ground, spawnAssets.benchImg)
         drawCharacter(ctx, screenX, charY, spriteSheet, currentFrame, facingLeft)
       } else {
         const sectionTopY = currentSection * canvas.height
@@ -397,22 +394,49 @@ export function GameCanvas() {
     // CSS @font-face alone doesn't guarantee fonts appear in document.fonts in time.
     const preloadFonts = async () => {
       const fontDefs = [
-        { family: 'Trajan Pro', url: '/fonts/Trajan-Pro.otf',      weight: '400' },
-        { family: 'Trajan Pro', url: '/fonts/Trajan-Pro-Bold.otf', weight: '700' },
+        { family: 'Trajan Pro', url: '/fonts/Trajan-Pro.otf',         weight: '400' },
+        { family: 'Trajan Pro', url: '/fonts/Trajan-Pro-Bold.otf',    weight: '700' },
         { family: 'Perpetua',   url: '/fonts/Perpetua-Regular.woff2', weight: '400' },
         { family: 'Perpetua',   url: '/fonts/Perpetua-Bold.woff2',    weight: '700' },
       ]
-      await Promise.all(fontDefs.map(async ({ family, url, weight }) => {
-        try {
-          const face = new FontFace(family, `url(${url})`, { weight, style: 'normal' })
-          await face.load()
-          document.fonts.add(face)
-        } catch {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn(`[Game] Font failed to load: ${family} weight ${weight} — ${url}`)
+
+      const assetSrcs: Array<[string, (img: HTMLImageElement) => void]> = [
+        ['/sprites/town_floor_01.png',    img => { spawnAssets = { ...spawnAssets, groundImg: img } }],
+        ['/sprites/station_pole.png',     img => { spawnAssets = { ...spawnAssets, poleImg:   img } }],
+        ['/sprites/sign_post_01.png',     img => { spawnAssets = { ...spawnAssets, sign1Img:  img } }],
+        ['/sprites/sign_post_02.png',     img => { spawnAssets = { ...spawnAssets, sign2Img:  img } }],
+        ['/sprites/town_bench.png',       img => { spawnAssets = { ...spawnAssets, benchImg:  img } }],
+        ['/sprites/grass_01_idle0000.png',img => { grassImgs   = { ...grassImgs,   a:         img } }],
+        ['/sprites/grass_03_idle0015.png',img => { grassImgs   = { ...grassImgs,   b:         img } }],
+        ['/sprites/simple_grass0007.png', img => { grassImgs   = { ...grassImgs,   c:         img } }],
+        ['/sprites/wp_plat_float_01.png', img => { platImg = img }],
+        // Dialogue decorations — no local variable needed; getImage() reads the cache
+        ['/sprites/Controller_Dialogue_0000_top.png', () => {}],
+        ['/sprites/Controller_Dialogue_0001_bot.png', () => {}],
+      ]
+
+      await Promise.all([
+        ...fontDefs.map(async ({ family, url, weight }) => {
+          try {
+            const face = new FontFace(family, `url(${url})`, { weight, style: 'normal' })
+            await face.load()
+            document.fonts.add(face)
+          } catch {
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`[Game] Font failed to load: ${family} weight ${weight} — ${url}`)
+            }
           }
-        }
-      }))
+        }),
+        ...assetSrcs.map(async ([src, setter]) => {
+          try {
+            setter(await loadImage(src))
+          } catch {
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`[Game] Asset failed to load: ${src}`)
+            }
+          }
+        }),
+      ])
       await document.fonts.ready
       rafId = requestAnimationFrame(loop)
     }

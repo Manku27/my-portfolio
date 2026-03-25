@@ -2,21 +2,48 @@
 import { drawTimelineRoom } from './TimelineRoom'
 import { drawWorkRoom } from './WorkRoom'
 import { profile } from '@/lib/data/index'
+import { getImage } from '@/utils/loadAssets'
 // roomIndex: 0 = work (left), 1 = spawn (centre), 2 = timeline (right)
 
 const ROOM_TINTS = ['#070a06', '#050a0a', '#050d0a', '#05080e']
 
-const LAMP_STEM_H = 90
-const LAMP_BULB_R = 10
+const LAMP_STEM_H   = 90   // fallback code-draw only
+const LAMP_BULB_R   = 10   // fallback code-draw only
+const LAMP_SPRITE_H = 200  // station_pole.png draw height
 
-export const LAMP_X_FACTOR = 0.18
-export function lampBulbY(groundY: number): number {
-  return groundY - LAMP_STEM_H - LAMP_BULB_R
+// Lamp is always this many px left of bench centre — keeps them locked together
+// regardless of canvas width.
+const BENCH_CENTRE_FAC  = 0.5
+const LAMP_BENCH_OFFSET = 115  // px
+
+export function getLampX(canvasW: number): number {
+  return canvasW * BENCH_CENTRE_FAC - LAMP_BENCH_OFFSET
+}
+
+export function lampBulbY(groundY: number, canvasW = 1280): number {
+  return groundY - Math.round(LAMP_SPRITE_H * spawnScale(canvasW)) + 15
+}
+
+// ─── Spawn room asset bundle ───────────────────────────────────────────────────
+export interface SpawnAssets {
+  groundImg: HTMLImageElement | null
+  poleImg:   HTMLImageElement | null
+  sign1Img:  HTMLImageElement | null
+  sign2Img:  HTMLImageElement | null
+  benchImg:  HTMLImageElement | null
 }
 
 // Pit — vertical descent to About Me world
 export const PIT_X_FAC = 0.58   // left edge as fraction of canvas width
 export const PIT_W_FAC = 0.09   // pit width as fraction of canvas width
+
+// ─── UI scale ─────────────────────────────────────────────────────────────────
+// Scales spawn-room assets proportionally on larger screens.
+// 1.0× at 1200px, 1.4× at 1680px, capped at 1.4×.
+
+export function spawnScale(canvasW: number): number {
+  return Math.min(1.4, Math.max(1.0, canvasW / 1200))
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,33 +67,96 @@ function drawLampPost(
   ctx: CanvasRenderingContext2D,
   x: number,
   groundY: number,
-  glowScale: number
+  glowScale: number,
+  poleImg: HTMLImageElement | null = null,
+  uiScale = 1
 ): void {
-  const stemY = groundY - LAMP_STEM_H
-  const bulbX = x
-  const bulbY = stemY - LAMP_BULB_R
+  const drawH = Math.round(LAMP_SPRITE_H * uiScale)
+  const bulbY = groundY - drawH + 15
 
-  // Stem
-  ctx.fillStyle = '#2a4a4a'
-  ctx.fillRect(x - 3, stemY, 6, LAMP_STEM_H)
+  if (poleImg) {
+    const drawW = Math.round(poleImg.naturalWidth * drawH / (poleImg.naturalHeight || 1)) || 44
+    ctx.drawImage(poleImg, x - drawW / 2, groundY - drawH, drawW, drawH)
+  } else {
+    // Fallback: code-drawn stem
+    const stemY = groundY - LAMP_STEM_H
+    ctx.fillStyle = '#2a4a4a'
+    ctx.fillRect(x - 3, stemY, 6, LAMP_STEM_H)
+    // Fallback bulb core
+    const brightness = Math.round(160 + glowScale * 95)
+    ctx.fillStyle = `rgb(${brightness},255,${brightness + 20})`
+    ctx.beginPath()
+    ctx.arc(x, bulbY, LAMP_BULB_R, 0, Math.PI * 2)
+    ctx.fill()
+  }
 
-  // Outer glow — expands on hover
-  const glowR = LAMP_BULB_R * 4 + glowScale * LAMP_BULB_R * 5
-  const glowAlpha = 0.18 + glowScale * 0.22
-  const glow = ctx.createRadialGradient(bulbX, bulbY, 0, bulbX, bulbY, glowR)
-  glow.addColorStop(0, `rgba(120,255,200,${glowAlpha})`)
-  glow.addColorStop(1, 'rgba(120,255,200,0)')
+  // Filament — always-on bright core
+  const filR = LAMP_BULB_R * 4
+  const filG = ctx.createRadialGradient(x, bulbY, 0, x, bulbY, filR)
+  filG.addColorStop(0,   'rgba(220,255,235,0.95)')
+  filG.addColorStop(0.3, 'rgba(160,255,215,0.60)')
+  filG.addColorStop(0.7, 'rgba(100,240,195,0.22)')
+  filG.addColorStop(1,   'rgba(80,220,180,0)')
+  ctx.fillStyle = filG
+  ctx.beginPath()
+  ctx.arc(x, bulbY, filR, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Outer halo — always somewhat visible, expands on hover
+  const glowR     = LAMP_BULB_R * 8 + glowScale * LAMP_BULB_R * 6
+  const glowAlpha = 0.32 + glowScale * 0.28
+  const glow = ctx.createRadialGradient(x, bulbY, 0, x, bulbY, glowR)
+  glow.addColorStop(0,   `rgba(140,255,210,${glowAlpha})`)
+  glow.addColorStop(0.5, `rgba(80,220,180,${glowAlpha * 0.4})`)
+  glow.addColorStop(1,   'rgba(60,200,160,0)')
   ctx.fillStyle = glow
   ctx.beginPath()
-  ctx.arc(bulbX, bulbY, glowR, 0, Math.PI * 2)
+  ctx.arc(x, bulbY, glowR, 0, Math.PI * 2)
   ctx.fill()
+}
 
-  // Bulb core
-  const brightness = Math.round(160 + glowScale * 95)
-  ctx.fillStyle = `rgb(${brightness},255,${brightness + 20})`
+// ─── Ground tiling helper ─────────────────────────────────────────────────────
+
+function drawGroundSection(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement | null,
+  x: number, w: number,
+  groundY: number, canvasH: number
+): void {
+  if (!img) {
+    ctx.fillStyle = '#152e2e'
+    ctx.fillRect(x, groundY, w, canvasH - groundY)
+    return
+  }
+  const tileH = 50
+  const tileW = Math.round(img.naturalWidth * tileH / (img.naturalHeight || 1)) || 128
+  ctx.save()
   ctx.beginPath()
-  ctx.arc(bulbX, bulbY, LAMP_BULB_R, 0, Math.PI * 2)
-  ctx.fill()
+  ctx.rect(x, groundY, w, canvasH - groundY)
+  ctx.clip()
+  let tx = x
+  while (tx < x + w) {
+    const dw  = Math.min(tileW, x + w - tx)
+    const sw  = img.naturalWidth ? Math.round(dw * img.naturalWidth / tileW) : dw
+    const sh  = img.naturalHeight || tileH
+    ctx.drawImage(img, 0, 0, sw, sh, tx, groundY, dw, tileH)
+    tx += tileW
+  }
+  ctx.restore()
+}
+
+// ─── Bench helper ─────────────────────────────────────────────────────────────
+
+function drawBench(
+  ctx: CanvasRenderingContext2D,
+  x: number, groundY: number,
+  img: HTMLImageElement | null,
+  uiScale = 1
+): void {
+  if (!img) return
+  const drawH = Math.round(72 * uiScale)
+  const drawW = Math.round(img.naturalWidth * drawH / (img.naturalHeight || 1)) || 80
+  ctx.drawImage(img, x - drawW / 2, groundY - drawH, drawW, drawH)
 }
 
 // ─── Spawn room atmosphere ────────────────────────────────────────────────────
@@ -97,10 +187,6 @@ function drawSpawnGroundGlow(
   band.addColorStop(1, 'rgba(60,200,150,0.18)')
   ctx.fillStyle = band
   ctx.fillRect(0, groundY - 18, w, 22)
-
-  // Bright top edge line
-  ctx.fillStyle = 'rgba(80,220,170,0.22)'
-  ctx.fillRect(0, groundY, w, 2)
 
   // Ground-level moss glow patches
   radialGlow(ctx, w * 0.38, groundY, w * 0.12, 'rgb(40,180,120)', 0.07)
@@ -205,8 +291,9 @@ function drawNamePlatform(
   canvasH: number,
   glow = 0
 ): void {
-  const { twoLine, fontSize } = layout
-  const centreY = canvasH * NAME_CENTRE_Y_FAC
+  const { twoLine, fontSize, platformW, platformX } = layout
+  const centreY  = canvasH * NAME_CENTRE_Y_FAC
+  const centreX  = platformX + platformW / 2
   const [first, last] = profile.name.split(' ')
 
   // Atmospheric glow when character stands on the name
@@ -227,13 +314,17 @@ function drawNamePlatform(
   ctx.textAlign    = 'center'
   ctx.textBaseline = 'middle'
 
+  // Compute top of name block (used for top decoration placement)
+  let nameTop: number
   let tagY: number
   if (twoLine) {
     const lineH = fontSize * 1.15
+    nameTop = centreY - lineH / 2 - fontSize / 2
     ctx.fillText(first, canvasW / 2, centreY - lineH / 2)
     ctx.fillText(last,  canvasW / 2, centreY + lineH / 2)
     tagY = centreY + lineH / 2 + fontSize * 0.75
   } else {
+    nameTop = centreY - fontSize / 2
     ctx.fillText(profile.name, canvasW / 2, centreY)
     tagY = centreY + fontSize * 0.75
   }
@@ -244,7 +335,32 @@ function drawNamePlatform(
   ctx.fillStyle = 'rgba(180,220,210,0.65)'
   ctx.fillText(profile.tagline, canvasW / 2, tagY)
 
+  // Bottom of tagline (textBaseline='middle' so add half the font size)
+  const tagBottom = tagY + tagFontSize / 2
+
   ctx.textAlign = 'left'
+
+  // ── Dialogue decorations ──────────────────────────────────────────────────
+  const topImg = getImage('/sprites/Controller_Dialogue_0000_top.png')
+  const botImg = getImage('/sprites/Controller_Dialogue_0001_bot.png')
+
+  if (topImg && topImg.naturalWidth > 0) {
+    const dW = topImg.naturalWidth
+    const dH = topImg.naturalHeight
+    // Bottom edge 8px above top of name text
+    const dX = centreX - dW / 2
+    const dY = nameTop - 8 - dH
+    ctx.drawImage(topImg, dX, dY, dW, dH)
+  }
+
+  if (botImg && botImg.naturalWidth > 0) {
+    const dW = botImg.naturalWidth
+    const dH = botImg.naturalHeight
+    // Top edge 8px below bottom of tagline
+    const dX = centreX - dW / 2
+    const dY = tagBottom + 8
+    ctx.drawImage(botImg, dX, dY, dW, dH)
+  }
 }
 
 // ─── Spawn room signposts ─────────────────────────────────────────────────────
@@ -327,15 +443,55 @@ function drawSignpost(
 function drawSpawnSignposts(
   ctx: CanvasRenderingContext2D,
   w: number,
-  groundY: number
+  groundY: number,
+  sign1Img: HTMLImageElement | null = null,
+  sign2Img: HTMLImageElement | null = null
 ): void {
-  const fs = Math.max(12, Math.floor(w * 0.014))
+  const fs       = Math.max(16, Math.floor(w * 0.020))
+  const spriteH  = Math.round(175 * spawnScale(w))
 
-  // Left — past lamp (0.18), in the clear playable area
-  drawSignpost(ctx, w * 0.24, groundY, 90, profile.title, '← The Work', 'left', fs)
+  function drawSignSprite(
+    img: HTMLImageElement, cx: number,
+    topLine: string, bottomLine: string
+  ): void {
+    const drawW   = Math.round(img.naturalWidth * spriteH / (img.naturalHeight || 1)) || 52
+    ctx.drawImage(img, cx - drawW / 2, groundY - spriteH, drawW, spriteH)
 
-  // Right — well inside the right vignette edge
-  drawSignpost(ctx, w * 0.76, groundY, 90, 'The Diary', 'What have I been up to? →', 'right', fs)
+    // Text sits above the sprite top, stacked upward
+    const gap       = Math.round(fs * 0.5)            // gap between sprite top and bottom text line
+    const lineGap   = Math.round(fs * 1.3)            // spacing between top and bottom lines
+    const botLineY  = groundY - spriteH - gap         // bottom line baseline (just above sprite)
+    const topLineY  = botLineY - lineGap              // top line baseline
+
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'
+
+    // Top line — Trajan Pro, brighter
+    ctx.font      = `700 ${fs}px 'Trajan Pro', serif`
+    ctx.fillStyle = 'rgba(190,240,215,0.95)'
+    ctx.shadowColor = 'rgba(50,200,140,0.50)'; ctx.shadowBlur = 8
+    ctx.fillText(topLine, cx, topLineY)
+
+    // Bottom line — Perpetua, muted
+    ctx.font      = `400 ${Math.round(fs * 0.88)}px 'Perpetua', serif`
+    ctx.fillStyle = 'rgba(120,195,160,0.82)'
+    ctx.shadowColor = 'rgba(50,180,130,0.35)'; ctx.shadowBlur = 5
+    ctx.fillText(bottomLine, cx, botLineY)
+
+    ctx.shadowBlur = 0
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
+  }
+
+  if (sign1Img) {
+    drawSignSprite(sign1Img, w * 0.24, profile.title, '← The Work')
+  } else {
+    drawSignpost(ctx, w * 0.24, groundY, 90, profile.title, '← The Work', 'left', fs)
+  }
+
+  if (sign2Img) {
+    drawSignSprite(sign2Img, w * 0.76, 'The Diary', 'What have I been up to? →')
+  } else {
+    drawSignpost(ctx, w * 0.76, groundY, 90, 'The Diary', 'What have I been up to? →', 'right', fs)
+  }
 }
 
 // ─── Pit ──────────────────────────────────────────────────────────────────────
@@ -382,14 +538,14 @@ function drawPit(
   ctx.fill()
 
   // "Who are you?" — atmospheric floating text, centred above pit
-  const labelFs = Math.max(12, Math.floor(w * 0.013))
+  const labelFs = Math.max(18, Math.floor(w * 0.022))
   ctx.font         = `400 ${labelFs}px 'Perpetua', serif`
-  ctx.fillStyle    = 'rgba(140,215,180,0.58)'
+  ctx.fillStyle    = 'rgba(140,215,180,0.72)'
   ctx.textAlign    = 'center'
   ctx.textBaseline = 'bottom'
-  ctx.shadowColor  = 'rgba(60,200,140,0.40)'
-  ctx.shadowBlur   = 8
-  ctx.fillText('Who are you?', pitMid, groundY - 14)
+  ctx.shadowColor  = 'rgba(60,200,140,0.55)'
+  ctx.shadowBlur   = 12
+  ctx.fillText('Who are you?', pitMid, groundY - 32)
   ctx.shadowBlur   = 0
   ctx.textAlign    = 'left'
   ctx.textBaseline = 'alphabetic'
@@ -423,24 +579,25 @@ export function drawRoomEnvironment(
   groundY: number,
   lampGlow = 0,
   nameGlow = 0,
-  nameLayout?: NameLayout
+  nameLayout?: NameLayout,
+  spawnAssets?: SpawnAssets
 ): void {
   // Ground plane — split around pit in spawn room
-  ctx.fillStyle = '#152e2e'
   if (roomIndex === 1) {
     const pitLeft  = canvasWidth * PIT_X_FAC
     const pitRight = pitLeft + canvasWidth * PIT_W_FAC
-    ctx.fillRect(0,        groundY, pitLeft,                canvasHeight - groundY)
-    ctx.fillRect(pitRight, groundY, canvasWidth - pitRight, canvasHeight - groundY)
+    drawGroundSection(ctx, spawnAssets?.groundImg ?? null, 0,        pitLeft,                groundY, canvasHeight)
+    drawGroundSection(ctx, spawnAssets?.groundImg ?? null, pitRight, canvasWidth - pitRight, groundY, canvasHeight)
   } else {
+    ctx.fillStyle = '#152e2e'
     ctx.fillRect(0, groundY, canvasWidth, canvasHeight - groundY)
   }
 
   if (roomIndex === 1) {
     drawSpawnGroundGlow(ctx, canvasWidth, groundY)
-    drawLampPost(ctx, canvasWidth * LAMP_X_FACTOR, groundY, lampGlow)
+    drawLampPost(ctx, getLampX(canvasWidth), groundY, lampGlow, spawnAssets?.poleImg ?? null, spawnScale(canvasWidth))
     drawVignette(ctx, canvasWidth, canvasHeight)
-    drawSpawnSignposts(ctx, canvasWidth, groundY)
+    drawSpawnSignposts(ctx, canvasWidth, groundY, spawnAssets?.sign1Img ?? null, spawnAssets?.sign2Img ?? null)
     drawPit(ctx, canvasWidth, groundY, canvasHeight)
     const layout = nameLayout ?? getNameLayout(ctx, canvasWidth, canvasHeight)
     drawNamePlatform(ctx, layout, canvasWidth, canvasHeight, nameGlow)
@@ -459,4 +616,15 @@ export function drawRoomEnvironment(
   if (roomIndex === 2 || roomIndex === 3) {
     drawTimelineRoom(ctx, roomIndex, canvasWidth, groundY)
   }
+}
+
+// ─── Spawn bench — drawn after foreground grass so it sits in front ────────────
+
+export function drawSpawnBench(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  groundY: number,
+  benchImg: HTMLImageElement | null
+): void {
+  drawBench(ctx, canvasWidth * 0.5, groundY, benchImg, spawnScale(canvasWidth))
 }

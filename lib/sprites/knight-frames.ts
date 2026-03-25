@@ -102,6 +102,6 @@ export const KNIGHT_SPRITE_PATH = '/sprites/knight.webp'
 // Source frames are ~50px wide. Scale up for visibility.
 // Collision box is fixed regardless of frame width variance.
 // ------------------------------------------------------------
-export const KNIGHT_RENDER_HEIGHT = 80   // px — display height
+export const KNIGHT_RENDER_HEIGHT = 110  // px — display height
 export const KNIGHT_COLLISION_W   = 32   // px — hitbox width
 export const KNIGHT_COLLISION_H   = 72   // px — hitbox height
