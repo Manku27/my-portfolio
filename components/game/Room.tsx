@@ -458,43 +458,46 @@ function drawSpawnSignposts(
 
   function drawSignSprite(
     img: HTMLImageElement, cx: number,
-    topLine: string, bottomLine: string
+    titleLines: string[], bottomLine: string
   ): void {
     const drawW   = Math.round(img.naturalWidth * spriteH / (img.naturalHeight || 1)) || 52
     ctx.drawImage(img, cx - drawW / 2, groundY - spriteH, drawW, spriteH)
 
-    // Text sits above the sprite top, stacked upward
-    const gap       = Math.round(fs * 0.5)            // gap between sprite top and bottom text line
-    const lineGap   = Math.round(fs * 1.3)            // spacing between top and bottom lines
-    const botLineY  = groundY - spriteH - gap         // bottom line baseline (just above sprite)
-    const topLineY  = botLineY - lineGap              // top line baseline
-
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'
 
-    // Top line — Trajan Pro, brighter
-    ctx.font      = `700 ${fs}px 'Trajan Pro', serif`
-    ctx.fillStyle = 'rgba(190,240,215,0.95)'
-    ctx.shadowColor = 'rgba(50,200,140,0.50)'; ctx.shadowBlur = 8
-    ctx.fillText(topLine, cx, topLineY)
-
-    // Bottom line — Perpetua, muted
+    // Bottom line — Perpetua, muted (direction arrow)
+    const gap      = Math.round(fs * 0.5)
+    const botLineY = groundY - spriteH - gap
     ctx.font      = `400 ${Math.round(fs * 0.88)}px 'Perpetua', serif`
     ctx.fillStyle = 'rgba(120,195,160,0.82)'
     ctx.shadowColor = 'rgba(50,180,130,0.35)'; ctx.shadowBlur = 5
     ctx.fillText(bottomLine, cx, botLineY)
+
+    // Title lines — Trajan Pro, stacked upward from the bottom line
+    const titleFs  = Math.round(fs * 0.85)
+    const titleGap = Math.round(titleFs * 1.25)
+    const baseY    = botLineY - Math.round(fs * 1.1)   // gap between arrow and bottom title line
+    ctx.font      = `700 ${titleFs}px 'Trajan Pro', serif`
+    ctx.fillStyle = 'rgba(190,240,215,0.95)'
+    ctx.shadowColor = 'rgba(50,200,140,0.50)'; ctx.shadowBlur = 8
+    for (let i = 0; i < titleLines.length; i++) {
+      // i=0 is top line, i=len-1 is bottom-most title line
+      const y = baseY - (titleLines.length - 1 - i) * titleGap
+      ctx.fillText(titleLines[i], cx, y)
+    }
 
     ctx.shadowBlur = 0
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
   }
 
   if (sign1Img) {
-    drawSignSprite(sign1Img, w * 0.14, profile.title, '← The Work')
+    drawSignSprite(sign1Img, w * 0.14, profile.title.split(' '), '← The Work')
   } else {
     drawSignpost(ctx, w * 0.14, groundY, 90, profile.title, '← The Work', 'left', fs)
   }
 
   if (sign2Img) {
-    drawSignSprite(sign2Img, w * 0.86, 'The Diary', 'What have I been up to? →')
+    drawSignSprite(sign2Img, w * 0.86, ['The Diary'], 'What have I been up to? →')
   } else {
     drawSignpost(ctx, w * 0.86, groundY, 90, 'The Diary', 'What have I been up to? →', 'right', fs)
   }
@@ -545,22 +548,23 @@ export function drawRoomEnvironment(
   if (roomIndex === 1) {
     drawSpawnGroundGlow(ctx, canvasWidth, groundY)
 
-    // Central lamp — sits on top of the elevated island (groundY - 160)
-    const islandY = groundY - 160
+    // Central lamp — sits on top of the elevated island (groundY - ISLAND_Y)
+    // Keep in sync with ISLAND_Y in Bricks.tsx
+    const islandY = groundY - 260
     drawLampPost(ctx, getLampX(canvasWidth), islandY, lampGlow, spawnAssets?.poleImg ?? null, spawnScale(canvasWidth))
 
 drawVignette(ctx, canvasWidth, canvasHeight)
     drawSpawnSignposts(ctx, canvasWidth, groundY, spawnAssets?.sign1Img ?? null, spawnAssets?.sign2Img ?? null)
 
-    // "Who are you?" — floating label centred in the void below the island
-    const labelFs = Math.max(18, Math.floor(canvasWidth * 0.022))
+    // Void label — single line centred in the gap
+    const labelFs = Math.max(14, Math.floor(canvasWidth * 0.018))
     ctx.font         = `400 ${labelFs}px 'Perpetua', serif`
-    ctx.fillStyle    = 'rgba(140,215,180,0.72)'
+    ctx.fillStyle    = 'rgba(120,190,165,0.65)'
     ctx.textAlign    = 'center'
-    ctx.textBaseline = 'bottom'
+    ctx.textBaseline = 'middle'
     ctx.shadowColor  = 'rgba(60,200,140,0.55)'
-    ctx.shadowBlur   = 12
-    ctx.fillText('Who are you?', canvasWidth / 2, groundY - 60)
+    ctx.shadowBlur   = 7
+    ctx.fillText("↓  fall to know more about Mayank's life", canvasWidth / 2, groundY - 80)
     ctx.shadowBlur   = 0
     ctx.textAlign    = 'left'
     ctx.textBaseline = 'alphabetic'

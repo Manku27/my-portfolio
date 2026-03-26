@@ -39,6 +39,7 @@ import {
   updateBricks,
   checkBrickCollisions,
   drawBricks,
+  ISLAND_Y,
 } from "./Bricks";
 import {
   drawCharmMenu,
@@ -51,7 +52,8 @@ import { drawSocialHUD, getSocialHudHit, getSocialUrl, SOCIAL_COUNT } from "./So
 const SPEED = 340; // px/s horizontal
 const GRAVITY = 1800; // px/s²
 const JUMP_VEL = 920; // px/s upward
-const GROUND_OFFSET = 64; // px from canvas bottom
+// Ground sits at 88% of canvas height — scales with screen size
+const GROUND_Y_FAC = 0.88;
 const ROOM_COUNT = 4; // 0=work, 1=spawn, 2=timeline, 3=timeline (older)
 const SPAWN_ROOM = 1;
 
@@ -180,9 +182,16 @@ export function GameCanvas() {
     let charmProgress = 0; // 0=closed, 1=fully open (animated)
     let charmSelected = 0; // 0-5
 
+    // Controls hint state
+    let hintsVisible = true;
+    let hintsOpacity = 0.72;
+    let hintsTimer = 0;       // seconds since first keypress
+    let hintsStarted = false; // true once first keypress registered
+
     // Keys
     const keys = new Set<string>();
     const onKeyDown = (e: KeyboardEvent) => {
+      if (!hintsStarted) hintsStarted = true;
       if (e.code === "Tab") {
         e.preventDefault();
         charmOpen = !charmOpen;
@@ -232,10 +241,10 @@ export function GameCanvas() {
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
 
-    const groundY = () => canvas.height - GROUND_OFFSET;
+    const groundY = () => Math.round(canvas.height * GROUND_Y_FAC);
 
     let charX = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2;
-    let charY = groundY() - 160 - CHARACTER_H;
+    let charY = groundY() - ISLAND_Y - CHARACTER_H;
     let velY = 0;
     let isGrounded = true;
     let jumpsLeft = 2;
@@ -356,7 +365,7 @@ export function GameCanvas() {
         if (currentRoom === 1) {
           const dist = Math.hypot(
             mouseX - getLampX(canvas.width),
-            mouseY - lampBulbY(ground - 160, canvas.width),
+            mouseY - lampBulbY(ground - ISLAND_Y, canvas.width),
           );
           lampGlow = lerp(
             lampGlow,
@@ -550,7 +559,7 @@ export function GameCanvas() {
           drawParallaxForeground(ctx, canvas.width, ground, time, grassImgs)
         }
         if (currentRoom === 1)
-          drawSpawnBench(ctx, canvas.width, ground - 160, spawnAssets.benchImg);
+          drawSpawnBench(ctx, canvas.width, ground - ISLAND_Y, spawnAssets.benchImg);
         drawCharacter(
           ctx,
           screenX,
@@ -599,6 +608,30 @@ export function GameCanvas() {
 
       // Social HUD — always on top, fixed screen-space, no world offset
       drawSocialHUD(ctx, mouseX, mouseY);
+
+      // Controls hint — screen-space, fades out 8s after first keypress
+      if (hintsVisible) {
+        if (hintsStarted) {
+          hintsTimer += delta;
+          if (hintsTimer >= 8) {
+            hintsOpacity = Math.max(0, hintsOpacity - delta / 2);
+            if (hintsOpacity <= 0) hintsVisible = false;
+          }
+        }
+        if (hintsVisible) {
+          const cx  = canvas.width / 2;
+          const r1y = canvas.height - 32 - 24;
+          const r2y = canvas.height - 32;
+          ctx.font      = `400 15px 'Perpetua', serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "bottom";
+          ctx.fillStyle = `rgba(140,200,180,${hintsOpacity})`;
+          ctx.fillText("← → to move     ↑ / Space to jump     double jump supported", cx, r1y);
+          ctx.fillText("Tab  to open charm menu", cx, r2y);
+          ctx.textAlign    = "left";
+          ctx.textBaseline = "alphabetic";
+        }
+      }
 
       rafId = requestAnimationFrame(loop);
     };

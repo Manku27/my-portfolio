@@ -11,11 +11,14 @@ export interface Brick {
   shake: number       // shake timer (seconds remaining, counts down to 0)
 }
 
+// Height of the central island top above groundY.
+// Referenced in GameCanvas for spawn position, bench, and lamp bulb Y.
+export const ISLAND_Y = 260
+
 // Bricks placed in spawn room (room 1).
 // Single wide central island — character spawns on top of it.
-// Platform top is 160px above ground; character spawns at groundY - 160 - CHARACTER_H.
 const BRICK_DEFS: Omit<Brick, 'shake'>[] = [
-  { room: 1, xFrac: 0.5, yFromGround: 160, w: 280, h: 20 },  // central island
+  { room: 1, xFrac: 0.5, yFromGround: ISLAND_Y, w: 280, h: 20 },  // central island
 ]
 
 export function initBricks(): Brick[] {
