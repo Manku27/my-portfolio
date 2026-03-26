@@ -34,6 +34,7 @@ import {
 } from "./ParallaxLayer";
 import { lerp } from "@/utils/lerp";
 import { loadImage } from "@/utils/loadAssets";
+import { initAudio } from "@/utils/audio";
 import { createParticles, drawParticles } from "./Particles";
 import {
   initBricks,
@@ -767,6 +768,8 @@ export function GameCanvas() {
 
     preloadFonts();
 
+    const cleanupAudio = initAudio();
+
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener("resize", resize);
@@ -775,6 +778,7 @@ export function GameCanvas() {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("click", onMouseClick);
       window.removeEventListener("hashchange", onHashChange);
+      cleanupAudio();
     };
   }, []);
 
