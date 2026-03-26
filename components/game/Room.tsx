@@ -33,10 +33,6 @@ export interface SpawnAssets {
   benchImg:  HTMLImageElement | null
 }
 
-// Pit — vertical descent to About Me world
-export const PIT_X_FAC = 0.58   // left edge as fraction of canvas width
-export const PIT_W_FAC = 0.09   // pit width as fraction of canvas width
-
 // ─── UI scale ─────────────────────────────────────────────────────────────────
 // Scales spawn-room assets proportionally on larger screens.
 // 1.0× at 1200px, 1.4× at 1680px, capped at 1.4×.
@@ -180,17 +176,27 @@ function drawSpawnGroundGlow(
   w: number,
   groundY: number
 ): void {
-  // Wide bioluminescent band along ground edge
-  const band = ctx.createLinearGradient(0, groundY - 18, 0, groundY + 4)
-  band.addColorStop(0, 'rgba(60,200,150,0)')
-  band.addColorStop(0.6, 'rgba(60,200,150,0.08)')
-  band.addColorStop(1, 'rgba(60,200,150,0.18)')
-  ctx.fillStyle = band
-  ctx.fillRect(0, groundY - 18, w, 22)
+  // Bioluminescent band — left section only (0 to w*0.28)
+  const leftW  = w * 0.28
+  const rightX = w * 0.72
+  const bandL = ctx.createLinearGradient(0, groundY - 18, 0, groundY + 4)
+  bandL.addColorStop(0, 'rgba(60,200,150,0)')
+  bandL.addColorStop(0.6, 'rgba(60,200,150,0.08)')
+  bandL.addColorStop(1, 'rgba(60,200,150,0.18)')
+  ctx.fillStyle = bandL
+  ctx.fillRect(0, groundY - 18, leftW, 22)
 
-  // Ground-level moss glow patches
-  radialGlow(ctx, w * 0.38, groundY, w * 0.12, 'rgb(40,180,120)', 0.07)
-  radialGlow(ctx, w * 0.65, groundY, w * 0.09, 'rgb(40,180,120)', 0.06)
+  // Bioluminescent band — right section only (w*0.72 to w)
+  const bandR = ctx.createLinearGradient(0, groundY - 18, 0, groundY + 4)
+  bandR.addColorStop(0, 'rgba(60,200,150,0)')
+  bandR.addColorStop(0.6, 'rgba(60,200,150,0.08)')
+  bandR.addColorStop(1, 'rgba(60,200,150,0.18)')
+  ctx.fillStyle = bandR
+  ctx.fillRect(rightX, groundY - 18, w - rightX, 22)
+
+  // Ground-level moss glow — one per side section
+  radialGlow(ctx, w * 0.14, groundY, w * 0.10, 'rgb(40,180,120)', 0.07)
+  radialGlow(ctx, w * 0.86, groundY, w * 0.08, 'rgb(40,180,120)', 0.06)
 }
 
 function drawVignette(
@@ -482,74 +488,18 @@ function drawSpawnSignposts(
   }
 
   if (sign1Img) {
-    drawSignSprite(sign1Img, w * 0.24, profile.title, '← The Work')
+    drawSignSprite(sign1Img, w * 0.14, profile.title, '← The Work')
   } else {
-    drawSignpost(ctx, w * 0.24, groundY, 90, profile.title, '← The Work', 'left', fs)
+    drawSignpost(ctx, w * 0.14, groundY, 90, profile.title, '← The Work', 'left', fs)
   }
 
   if (sign2Img) {
-    drawSignSprite(sign2Img, w * 0.76, 'The Diary', 'What have I been up to? →')
+    drawSignSprite(sign2Img, w * 0.86, 'The Diary', 'What have I been up to? →')
   } else {
-    drawSignpost(ctx, w * 0.76, groundY, 90, 'The Diary', 'What have I been up to? →', 'right', fs)
+    drawSignpost(ctx, w * 0.86, groundY, 90, 'The Diary', 'What have I been up to? →', 'right', fs)
   }
 }
 
-// ─── Pit ──────────────────────────────────────────────────────────────────────
-
-function drawPit(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  groundY: number,
-  h: number
-): void {
-  const pitLeft = w * PIT_X_FAC
-  const pitW    = w * PIT_W_FAC
-  const pitMid  = pitLeft + pitW / 2
-
-  // Dark void — fills from ground down, fades to transparent
-  const dg = ctx.createLinearGradient(0, groundY, 0, groundY + h * 0.5)
-  dg.addColorStop(0,   'rgba(1,3,5,1)')
-  dg.addColorStop(0.5, 'rgba(2,6,8,0.80)')
-  dg.addColorStop(1,   'rgba(5,10,12,0)')
-  ctx.fillStyle = dg
-  ctx.fillRect(pitLeft, groundY, pitW, h * 0.5)
-
-  // Left edge glow
-  const gl = ctx.createLinearGradient(pitLeft - 20, 0, pitLeft + 4, 0)
-  gl.addColorStop(0, 'rgba(40,200,130,0)')
-  gl.addColorStop(1, 'rgba(40,200,130,0.32)')
-  ctx.fillStyle = gl
-  ctx.fillRect(pitLeft - 20, groundY - 6, 24, 8)
-
-  // Right edge glow
-  const gr = ctx.createLinearGradient(pitLeft + pitW - 4, 0, pitLeft + pitW + 20, 0)
-  gr.addColorStop(0, 'rgba(40,200,130,0.32)')
-  gr.addColorStop(1, 'rgba(40,200,130,0)')
-  ctx.fillStyle = gr
-  ctx.fillRect(pitLeft + pitW - 4, groundY - 6, 24, 8)
-
-  // Faint upward light from within the pit
-  const ul = ctx.createRadialGradient(pitMid, groundY + 20, 2, pitMid, groundY + 20, pitW * 1.2)
-  ul.addColorStop(0, 'rgba(30,160,110,0.18)')
-  ul.addColorStop(1, 'rgba(30,160,110,0)')
-  ctx.fillStyle = ul
-  ctx.beginPath()
-  ctx.ellipse(pitMid, groundY + 20, pitW * 1.2, 30, 0, 0, Math.PI * 2)
-  ctx.fill()
-
-  // "Who are you?" — atmospheric floating text, centred above pit
-  const labelFs = Math.max(18, Math.floor(w * 0.022))
-  ctx.font         = `400 ${labelFs}px 'Perpetua', serif`
-  ctx.fillStyle    = 'rgba(140,215,180,0.72)'
-  ctx.textAlign    = 'center'
-  ctx.textBaseline = 'bottom'
-  ctx.shadowColor  = 'rgba(60,200,140,0.55)'
-  ctx.shadowBlur   = 12
-  ctx.fillText('Who are you?', pitMid, groundY - 32)
-  ctx.shadowBlur   = 0
-  ctx.textAlign    = 'left'
-  ctx.textBaseline = 'alphabetic'
-}
 
 // ─── Phase 1: background fill ─────────────────────────────────────────────────
 // Called before parallax layers.
@@ -582,12 +532,11 @@ export function drawRoomEnvironment(
   nameLayout?: NameLayout,
   spawnAssets?: SpawnAssets
 ): void {
-  // Ground plane — split around pit in spawn room
+  // Ground plane — left section (0..w*0.28) and right section (w*0.72..end)
   if (roomIndex === 1) {
-    const pitLeft  = canvasWidth * PIT_X_FAC
-    const pitRight = pitLeft + canvasWidth * PIT_W_FAC
-    drawGroundSection(ctx, spawnAssets?.groundImg ?? null, 0,        pitLeft,                groundY, canvasHeight)
-    drawGroundSection(ctx, spawnAssets?.groundImg ?? null, pitRight, canvasWidth - pitRight, groundY, canvasHeight)
+    const rightX = canvasWidth * 0.72
+    drawGroundSection(ctx, spawnAssets?.groundImg ?? null, 0,      canvasWidth * 0.28,    groundY, canvasHeight)
+    drawGroundSection(ctx, spawnAssets?.groundImg ?? null, rightX, canvasWidth - rightX,  groundY, canvasHeight)
   } else {
     ctx.fillStyle = '#152e2e'
     ctx.fillRect(0, groundY, canvasWidth, canvasHeight - groundY)
@@ -595,10 +544,27 @@ export function drawRoomEnvironment(
 
   if (roomIndex === 1) {
     drawSpawnGroundGlow(ctx, canvasWidth, groundY)
-    drawLampPost(ctx, getLampX(canvasWidth), groundY, lampGlow, spawnAssets?.poleImg ?? null, spawnScale(canvasWidth))
-    drawVignette(ctx, canvasWidth, canvasHeight)
+
+    // Central lamp — sits on top of the elevated island (groundY - 160)
+    const islandY = groundY - 160
+    drawLampPost(ctx, getLampX(canvasWidth), islandY, lampGlow, spawnAssets?.poleImg ?? null, spawnScale(canvasWidth))
+
+drawVignette(ctx, canvasWidth, canvasHeight)
     drawSpawnSignposts(ctx, canvasWidth, groundY, spawnAssets?.sign1Img ?? null, spawnAssets?.sign2Img ?? null)
-    drawPit(ctx, canvasWidth, groundY, canvasHeight)
+
+    // "Who are you?" — floating label centred in the void below the island
+    const labelFs = Math.max(18, Math.floor(canvasWidth * 0.022))
+    ctx.font         = `400 ${labelFs}px 'Perpetua', serif`
+    ctx.fillStyle    = 'rgba(140,215,180,0.72)'
+    ctx.textAlign    = 'center'
+    ctx.textBaseline = 'bottom'
+    ctx.shadowColor  = 'rgba(60,200,140,0.55)'
+    ctx.shadowBlur   = 12
+    ctx.fillText('Who are you?', canvasWidth / 2, groundY - 60)
+    ctx.shadowBlur   = 0
+    ctx.textAlign    = 'left'
+    ctx.textBaseline = 'alphabetic'
+
     const layout = nameLayout ?? getNameLayout(ctx, canvasWidth, canvasHeight)
     drawNamePlatform(ctx, layout, canvasWidth, canvasHeight, nameGlow)
   } else {

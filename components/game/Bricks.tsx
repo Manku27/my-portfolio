@@ -12,17 +12,10 @@ export interface Brick {
 }
 
 // Bricks placed in spawn room (room 1).
-// Three-step staircase leading up to the name platform.
-// At 1280×720 the name top sits ~498px above ground (canvasH*0.25 - fontSize*0.5
-// where fontSize = canvasW*0.042). Jump height with JUMP_VEL=920, GRAVITY=1800 = 235px.
-//   Ground  → step 1: 140px jump  ✓
-//   step 1  → step 2: 120px jump  ✓
-//   step 2  → step 3: 100px jump  ✓
-//   step 3  → name:   ~138px jump ✓  (name at ~498, step 3 at 360)
+// Single wide central island — character spawns on top of it.
+// Platform top is 160px above ground; character spawns at groundY - 160 - CHARACTER_H.
 const BRICK_DEFS: Omit<Brick, 'shake'>[] = [
-  { room: 1, xFrac: 0.30, yFromGround: 170, w: 80, h: 20 },  // step 1 — easy first hop
-  { room: 1, xFrac: 0.42, yFromGround: 290, w: 80, h: 20 },  // step 2 — mid
-  { room: 1, xFrac: 0.55, yFromGround: 390, w: 80, h: 20 },  // step 3 — just below name
+  { room: 1, xFrac: 0.5, yFromGround: 160, w: 280, h: 20 },  // central island
 ]
 
 export function initBricks(): Brick[] {

@@ -14,8 +14,6 @@ import {
   getNameLayout,
   getLampX,
   lampBulbY,
-  PIT_X_FAC,
-  PIT_W_FAC,
   type SpawnAssets,
 } from "./Room";
 import {
@@ -216,11 +214,7 @@ export function GameCanvas() {
           isGrounded
         ) {
           worldMode = "horizontal";
-          charX =
-            SPAWN_ROOM * canvas.width +
-            canvas.width * PIT_X_FAC -
-            CHARACTER_W -
-            8;
+          charX = SPAWN_ROOM * canvas.width + canvas.width * 0.14 - CHARACTER_W / 2;
           charY = groundY() - CHARACTER_H;
           velY = -JUMP_VEL * 0.45;
           isGrounded = false;
@@ -241,7 +235,7 @@ export function GameCanvas() {
     const groundY = () => canvas.height - GROUND_OFFSET;
 
     let charX = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2;
-    let charY = groundY() - CHARACTER_H;
+    let charY = groundY() - 160 - CHARACTER_H;
     let velY = 0;
     let isGrounded = true;
     let jumpsLeft = 2;
@@ -324,20 +318,20 @@ export function GameCanvas() {
           }
         }
 
-        // Pit detection — skip ground clamp when falling through pit in spawn room
-        const pitWorldL = SPAWN_ROOM * canvas.width + canvas.width * PIT_X_FAC;
-        const pitWorldR = pitWorldL + canvas.width * PIT_W_FAC;
-        const charMidX = charX + CHARACTER_W / 2;
-        const overPit =
-          currentRoom === 1 && charMidX > pitWorldL && charMidX < pitWorldR;
+        // Gap detection — void is the middle area (0.28..0.72); ground exists only at edges
+        const spawnBase = SPAWN_ROOM * canvas.width;
+        const localMidX = charX + CHARACTER_W / 2 - spawnBase;
+        const overGap = currentRoom === 1
+          && localMidX > canvas.width * 0.28
+          && localMidX < canvas.width * 0.72;
 
-        if (!overPit && charY + CHARACTER_H >= ground) {
+        if (!overGap && charY + CHARACTER_H >= ground) {
           charY = ground - CHARACTER_H;
           velY = 0;
           isGrounded = true;
           jumpsLeft = 2;
-        } else if (overPit && charY + CHARACTER_H >= ground) {
-          // Feet at ground level over the pit — enter the vertical world immediately
+        } else if (overGap && charY + CHARACTER_H >= ground) {
+          // Fell through side gap — enter the About Me vertical world
           worldMode = "vertical";
           charVX = canvas.width / 2 - CHARACTER_W / 2;
           charWorldY = 0;
@@ -362,7 +356,7 @@ export function GameCanvas() {
         if (currentRoom === 1) {
           const dist = Math.hypot(
             mouseX - getLampX(canvas.width),
-            mouseY - lampBulbY(ground, canvas.width),
+            mouseY - lampBulbY(ground - 160, canvas.width),
           );
           lampGlow = lerp(
             lampGlow,
@@ -543,9 +537,20 @@ export function GameCanvas() {
         drawBricks(ctx, bricks, cameraX, ground, canvas.width, platImg);
         if (currentRoom === 1)
           drawParticles(ctx, particles, canvas.width, canvas.height, time);
-        drawParallaxForeground(ctx, canvas.width, ground, time, grassImgs);
+        if (currentRoom === 1) {
+          // Clip grass to the two ground sections — no grass over the void
+          ctx.save()
+          ctx.beginPath()
+          ctx.rect(0, 0, canvas.width * 0.28, canvas.height)
+          ctx.rect(canvas.width * 0.72, 0, canvas.width * 0.28, canvas.height)
+          ctx.clip()
+          drawParallaxForeground(ctx, canvas.width, ground, time, grassImgs)
+          ctx.restore()
+        } else {
+          drawParallaxForeground(ctx, canvas.width, ground, time, grassImgs)
+        }
         if (currentRoom === 1)
-          drawSpawnBench(ctx, canvas.width, ground, spawnAssets.benchImg);
+          drawSpawnBench(ctx, canvas.width, ground - 160, spawnAssets.benchImg);
         drawCharacter(
           ctx,
           screenX,
