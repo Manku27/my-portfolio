@@ -408,7 +408,7 @@ export function drawSpeechBubble(
   }
 
   // 5. Title — Trajan Pro 700, absolute bottom-left of canvas (Elderbug style)
-  const TITLE_SCREEN_Y = canvasH - 48;
+  const TITLE_SCREEN_Y = canvasH - 30;
   const TITLE_SCREEN_X = PAD_X;
   ctx.font = `700 ${titleFs}px 'Trajan Pro', serif`;
   ctx.fillStyle = "rgba(220,195,110,0.97)";

@@ -49,8 +49,9 @@ function drawIsland(
   cx: number,
   groundY: number,
   isCurrent: boolean,
+  wScale: number,
 ): void {
-  const iW = isCurrent ? ISLAND_W_CUR : ISLAND_W_DEF;
+  const iW = Math.round((isCurrent ? ISLAND_W_CUR : ISLAND_W_DEF) * wScale);
   const islandTopY = groundY - ISLAND_OFFSET;
   const iX = cx - iW / 2;
 
@@ -109,11 +110,12 @@ function drawLogoBox(
   company: WorkExperience,
   cx: number,
   groundY: number,
+  wScale: number,
 ): void {
   const isCurrent = !!company.current;
-  const iW = isCurrent ? ISLAND_W_CUR : ISLAND_W_DEF;
+  const iW   = Math.round((isCurrent ? ISLAND_W_CUR : ISLAND_W_DEF) * wScale);
   const boxW = iW - 16;
-  const boxH = isCurrent ? BOX_H_CUR : BOX_H_DEF;
+  const boxH = Math.round((isCurrent ? BOX_H_CUR : BOX_H_DEF) * wScale);
   const islandTopY = groundY - ISLAND_OFFSET;
   const boxY = islandTopY - boxH;
   const boxX = cx - boxW / 2;
@@ -290,6 +292,7 @@ export function getWorkTriggers(
   canvasW: number,
   groundY: number,
 ): WorkTrigger[] {
+  const wScale     = Math.min(1.0, canvasW / 1530);
   const islandTopY = groundY - ISLAND_OFFSET;
 
   const triggers: WorkTrigger[] = COMPANIES.map((company, i) => {
@@ -302,7 +305,7 @@ export function getWorkTriggers(
     return {
       id:      company.id,
       worldX:  canvasW * COMPANY_X[i],
-      roofY:   islandTopY - (company.current ? BOX_H_CUR : BOX_H_DEF),
+      roofY:   islandTopY - Math.round((company.current ? BOX_H_CUR : BOX_H_DEF) * wScale),
       radius:  80,
       content,
     }
@@ -327,14 +330,16 @@ export function drawWorkRoom(
   canvasWidth: number,
   groundY: number,
 ): void {
+  const wScale = Math.min(1.0, canvasWidth / 1530);
+
   // Hanging pavilion — centred between PwC and TechMahindra
   drawHangingProjects(ctx, canvasWidth * PROJECTS_X, groundY, canvasWidth);
 
   // Islands + logo boxes for each company (oldest → newest, left → right)
   COMPANIES.forEach((company, i) => {
     const cx = canvasWidth * COMPANY_X[i];
-    drawIsland(ctx, cx, groundY, !!company.current);
-    drawLogoBox(ctx, company, cx, groundY);
+    drawIsland(ctx, cx, groundY, !!company.current, wScale);
+    drawLogoBox(ctx, company, cx, groundY, wScale);
   });
 }
 
@@ -359,11 +364,17 @@ export function drawSkillBar(
   const alpha = Math.max(0, 1 - bubbleProgress * 12);
   if (alpha <= 0.01) return;
 
-  const iconH = Math.round(canvasH * 0.1);
-  const margin = canvasW * 0.22;
-  const span = canvasW - margin * 2;
-  const step = span / (SKILL_SRCS.length - 1);
-  const baseY = 80 + canvasH * 0.2; // centred in upper dialogue area
+  const iconH   = Math.round(canvasH * 0.1);
+  const margin  = canvasW * 0.22;
+  const span    = canvasW - margin * 2;
+  const step    = span / (SKILL_SRCS.length - 1);
+
+  // Clamp baseY so icons never overlap the company boxes below them
+  const groundY   = Math.round(canvasH * 0.88);
+  const wScale    = Math.min(1.0, canvasW / 1530);
+  const scaledCur = Math.round(BOX_H_CUR * wScale);
+  const maxBottom = groundY - ISLAND_OFFSET - scaledCur - 20; // 20px safety gap
+  const baseY     = Math.min(80 + canvasH * 0.2, maxBottom - iconH / 2);
 
   ctx.save();
   ctx.globalAlpha = alpha;
