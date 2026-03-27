@@ -18,7 +18,15 @@ export const ISLAND_Y = 260
 // Bricks placed in spawn room (room 1).
 // Single wide central island — character spawns on top of it.
 const BRICK_DEFS: Omit<Brick, 'shake'>[] = [
-  { room: 1, xFrac: 0.5, yFromGround: ISLAND_Y, w: 280, h: 20 },  // central island
+  { room: 1, xFrac: 0.5,  yFromGround: ISLAND_Y, w: 280, h: 20 },  // spawn island
+
+  // Work world company islands — room 0.
+  // xFrac and yFromGround must stay in sync with COMPANY_X and ISLAND_OFFSET in WorkRoom.tsx.
+  // Visual drawing is handled entirely by WorkRoom.tsx — drawBricks skips room 0.
+  { room: 0, xFrac: 0.14, yFromGround: 130, w: 220, h: 20 },  // Infosys
+  { room: 0, xFrac: 0.31, yFromGround: 130, w: 220, h: 20 },  // PwC
+  { room: 0, xFrac: 0.69, yFromGround: 130, w: 220, h: 20 },  // Tech Mahindra
+  { room: 0, xFrac: 0.86, yFromGround: 130, w: 260, h: 20 },  // Merkle (current, wider)
 ]
 
 export function initBricks(): Brick[] {
@@ -86,6 +94,9 @@ export function drawBricks(
   platImg?: HTMLImageElement | null
 ): void {
   for (const brick of bricks) {
+    // Room 0 (work world) visuals are drawn by WorkRoom.tsx — skip here
+    if (brick.room === 0) continue
+
     const bwxWorld = brick.room * canvasWidth + brick.xFrac * canvasWidth - brick.w / 2
     const screenX  = bwxWorld - cameraX
     const baseY    = groundY - brick.yFromGround

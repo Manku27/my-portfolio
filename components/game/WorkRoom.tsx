@@ -4,7 +4,6 @@
 
 import { workExperience, consultingEngagements, projects } from '@/lib/data/index'
 import { getImage } from '@/utils/loadAssets'
-import { wrapText } from '@/utils/wrapText'
 import type { WorkExperience } from '@/lib/types'
 import { workToBubble, pavilionToBubble, type BubbleContent } from './SpeechBubble'
 
@@ -20,206 +19,232 @@ const COMPANY_LOGO: Record<string, string> = {
   'infosys':                 '/sprites/work/Infosys.webp',
 }
 
-// Building heights by id
-const BUILDING_H: Record<string, number> = {
-  'merkle-dentsu':           190,
-  'tech-mahindra-microsoft': 155,
-  'pwc':                     168,
-  'infosys':                 110,
+// Layout — left to right: Infosys · PwC · [Projects] · TechMahindra · Merkle
+const COMPANY_X  = [0.14, 0.31, 0.69, 0.86] // fractions of canvasW
+const PROJECTS_X = 0.50                       // hanging pavilion
+
+// Island geometry — each company sits on a floating stone island
+// NOTE: xFrac values and ISLAND_OFFSET must stay in sync with Bricks.tsx room-0 entries.
+const ISLAND_OFFSET = 130  // island top is this many px above groundY
+const ISLAND_W_DEF  = 220
+const ISLAND_W_CUR  = 260  // wider island for current role
+
+// Logo box geometry — white box sitting on the island
+const BOX_H_DEF = 110
+const BOX_H_CUR = 130
+
+// ─── Island platform ──────────────────────────────────────────────────────────
+
+function drawIsland(
+  ctx:       CanvasRenderingContext2D,
+  cx:        number,
+  groundY:   number,
+  isCurrent: boolean,
+): void {
+  const iW         = isCurrent ? ISLAND_W_CUR : ISLAND_W_DEF
+  const islandTopY = groundY - ISLAND_OFFSET
+  const iX         = cx - iW / 2
+
+  // Ambient glow beneath island
+  const glowR  = iW * 0.85
+  const glowCY = islandTopY + 12
+  const glow   = ctx.createRadialGradient(cx, glowCY, 0, cx, glowCY, glowR)
+  glow.addColorStop(0, isCurrent ? 'rgba(210,165,55,0.13)' : 'rgba(55,165,115,0.08)')
+  glow.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = glow
+  ctx.fillRect(cx - glowR, glowCY - glowR, glowR * 2, glowR * 2)
+
+  // Platform sprite — same as spawn island (wp_plat_float_01.png)
+  const platImg = getImage('/sprites/wp_plat_float_01.png')
+  if (platImg && platImg.naturalWidth > 0) {
+    const vW = iW
+    const vH = Math.round(platImg.naturalHeight * vW / platImg.naturalWidth)
+    ctx.drawImage(platImg, iX, islandTopY, vW, vH)
+
+    // Dark tapered underbelly below the sprite
+    const bellyTop = islandTopY + vH
+    const bellyH   = 28
+    ctx.fillStyle  = '#0c1910'
+    ctx.beginPath()
+    ctx.moveTo(iX + 8,      bellyTop)
+    ctx.lineTo(iX + iW - 8, bellyTop)
+    ctx.lineTo(iX + iW - 18, bellyTop + bellyH)
+    ctx.lineTo(iX + 18,      bellyTop + bellyH)
+    ctx.closePath()
+    ctx.fill()
+  } else {
+    // Fallback — colour-only slab matching Bricks.tsx fallback
+    ctx.fillStyle = isCurrent ? '#3a2e18' : '#2e1e10'
+    ctx.fillRect(iX, islandTopY, iW, 20)
+    ctx.fillStyle = isCurrent ? 'rgba(210,165,55,0.7)' : 'rgba(80,200,150,0.4)'
+    ctx.fillRect(iX, islandTopY, iW, 2)
+    // Underbelly
+    ctx.fillStyle = '#0c1910'
+    ctx.beginPath()
+    ctx.moveTo(iX + 8,       islandTopY + 20)
+    ctx.lineTo(iX + iW - 8,  islandTopY + 20)
+    ctx.lineTo(iX + iW - 18, islandTopY + 48)
+    ctx.lineTo(iX + 18,      islandTopY + 48)
+    ctx.closePath()
+    ctx.fill()
+  }
 }
 
-// Layout: pavilion far-left, then 4 company buildings left→right (oldest→newest)
-// x positions as fractions of canvas width
-const PAVILION_X  = 0.06
-const COMPANY_X   = [0.22, 0.40, 0.60, 0.80]
+// ─── Logo box ─────────────────────────────────────────────────────────────────
 
-const ELEV_LIFT_SPRITE = '/sprites/work/elev_lift.png'
-
-// ─── Company building ──────────────────────────────────────────────────────────
-
-function drawCompanyBuilding(
-  ctx: CanvasRenderingContext2D,
+function drawLogoBox(
+  ctx:     CanvasRenderingContext2D,
   company: WorkExperience,
-  cx: number,
-  groundY: number
+  cx:      number,
+  groundY: number,
 ): void {
-  const bH = BUILDING_H[company.id] ?? 140
-  const bW = company.current ? 100 : 80
-  const bX = cx - bW / 2
-  const bY = groundY - bH
+  const isCurrent  = !!company.current
+  const iW         = isCurrent ? ISLAND_W_CUR : ISLAND_W_DEF
+  const boxW       = iW - 16
+  const boxH       = isCurrent ? BOX_H_CUR : BOX_H_DEF
+  const islandTopY = groundY - ISLAND_OFFSET
+  const boxY       = islandTopY - boxH
+  const boxX       = cx - boxW / 2
 
-  // Amber glow — brighter for current role
-  const glowR = company.current ? 140 : 95
-  const glow = ctx.createRadialGradient(cx, bY + bH * 0.35, 0, cx, bY + bH * 0.35, glowR)
-  glow.addColorStop(0, company.current ? 'rgba(180,130,40,0.14)' : 'rgba(150,110,30,0.08)')
-  glow.addColorStop(1, 'rgba(180,130,40,0)')
-  ctx.fillStyle = glow
+  // White box
+  ctx.fillStyle = 'rgba(250,250,246,0.97)'
   ctx.beginPath()
-  ctx.arc(cx, bY + bH * 0.35, glowR, 0, Math.PI * 2)
+  ctx.roundRect(boxX, boxY, boxW, boxH, 5)
   ctx.fill()
 
-  // Building body
-  ctx.fillStyle = '#1e2a20'
-  ctx.fillRect(bX, bY, bW, bH)
+  // Border — amber for current, subtle for others
+  ctx.strokeStyle = isCurrent ? 'rgba(200,155,45,0.90)' : 'rgba(130,155,125,0.40)'
+  ctx.lineWidth   = isCurrent ? 2.5 : 1
+  ctx.stroke()
 
-  // Window grid
-  const cols = bW > 90 ? 3 : 2
-  const rows = Math.max(2, Math.floor(bH / 46))
-  const winW = 14
-  const winH = 20
-  const colGap = (bW - cols * winW) / (cols + 1)
-  const rowGap = (bH - rows * winH) / (rows + 1)
-  ctx.fillStyle = 'rgba(180,200,160,0.18)'
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      ctx.fillRect(
-        bX + colGap + c * (winW + colGap),
-        bY + rowGap + r * (winH + rowGap),
-        winW, winH
-      )
-    }
+  // Pulsing amber orb above Merkle box — replaces chimney smoke
+  if (isCurrent) {
+    const t       = Date.now()
+    const pulse   = 0.70 + 0.30 * Math.sin(t / 600)
+    const floatY  = boxY - 18 - Math.sin(t / 700) * 5
+    const orbR    = 6
+
+    // Outer glow
+    const orbGlow = ctx.createRadialGradient(cx, floatY, 0, cx, floatY, orbR * 5)
+    orbGlow.addColorStop(0, `rgba(240,185,65,${(pulse * 0.55).toFixed(3)})`)
+    orbGlow.addColorStop(0.5, `rgba(220,155,40,${(pulse * 0.22).toFixed(3)})`)
+    orbGlow.addColorStop(1, 'rgba(200,130,30,0)')
+    ctx.fillStyle = orbGlow
+    ctx.beginPath()
+    ctx.arc(cx, floatY, orbR * 5, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Bright core
+    ctx.fillStyle = `rgba(255,220,110,${pulse.toFixed(3)})`
+    ctx.beginPath()
+    ctx.arc(cx, floatY, orbR, 0, Math.PI * 2)
+    ctx.fill()
+
+    // orb only — no text label
   }
 
-  // Roof accent
-  ctx.fillStyle = company.current ? '#c89030' : '#a07828'
-  ctx.fillRect(bX - 4, bY - 4, bW + 8, 4)
-
-  // Logo pill + image
-  const logoSrc      = COMPANY_LOGO[company.id]
-  const logoImg      = logoSrc ? getImage(logoSrc) : null
-  const pillW        = bW - 12
-  const pillH        = 32
-  const pillX        = bX + 6
-  const pillY        = bY + bH * 0.30
-  const pillCentreY  = pillY + 16
-  ctx.fillStyle      = 'rgba(8,18,16,0.80)'
-  ctx.fillRect(pillX, pillY, pillW, pillH)
+  // Company logo — scaled to fit inside the box
+  const logoSrc = COMPANY_LOGO[company.id]
+  const logoImg = logoSrc ? getImage(logoSrc) : null
   if (logoImg && logoImg.naturalWidth > 0) {
-    const maxLogoH = 24
-    const logoH    = Math.min(maxLogoH, pillH - 4)
-    const logoW    = Math.round(logoImg.naturalWidth * logoH / logoImg.naturalHeight)
-    ctx.drawImage(logoImg, cx - logoW / 2, pillCentreY - logoH / 2, logoW, logoH)
-  }
-  // Merkle acquisition chain plaque
-  if (company.id === 'merkle-dentsu') {
-    ctx.fillStyle    = 'rgba(180,160,100,0.50)'
-    ctx.font         = `400 8px 'Perpetua', serif`
-    ctx.textAlign    = 'center'
-    ctx.fillText('Extentia → Merkle → Dentsu', cx, bY + bH * 0.30 + 40)
+    const maxH = boxH - 22
+    const maxW = boxW - 16
+    let logoH = maxH
+    let logoW = Math.round(logoImg.naturalWidth * logoH / logoImg.naturalHeight)
+    if (logoW > maxW) {
+      logoW = maxW
+      logoH = Math.round(logoImg.naturalHeight * logoW / logoImg.naturalWidth)
+    }
+    ctx.drawImage(logoImg, cx - logoW / 2, boxY + 8, logoW, logoH)
   }
 
-  // Company name
-  ctx.fillStyle = company.current ? 'rgba(220,190,100,0.95)' : 'rgba(200,170,80,0.85)'
-  ctx.font = `700 ${company.current ? 13 : 12}px 'Trajan Pro', serif`
-  ctx.textAlign = 'center'
-  ctx.fillText(company.company, cx, bY - 14)
+  // Company name — bottom of box in Trajan Pro
+  ctx.fillStyle    = isCurrent ? 'rgba(170,120,35,0.95)' : 'rgba(50,70,60,0.85)'
+  ctx.font         = `700 ${isCurrent ? 14 : 13}px 'Trajan Pro', serif`
+  ctx.textAlign    = 'center'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillText(company.company, cx, boxY + boxH - 8)
 
-  // Period
-  ctx.fillStyle = 'rgba(160,140,60,0.55)'
-  ctx.font = `400 9px 'Perpetua', serif`
-  ctx.fillText(company.period, cx, bY - 4)
+  // Period label — floats just above the white box, clear of the island
+  ctx.fillStyle    = 'rgba(160,200,175,0.85)'
+  ctx.font         = `400 12px 'Perpetua', serif`
+  ctx.textAlign    = 'center'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillText(company.period, cx, boxY - 10)
 }
 
-function drawCompanyText(
-  ctx: CanvasRenderingContext2D,
-  company: WorkExperience,
-  cx: number,
-  groundY: number
+// ─── Hanging pavilion (elev_lift.png + single centre rope) ────────────────────
+
+function drawHangingProjects(
+  ctx:         CanvasRenderingContext2D,
+  cx:          number,
+  groundY:     number,
+  canvasWidth: number,
 ): void {
-  const bH = BUILDING_H[company.id] ?? 140
-  const bY = groundY - bH
-  let y = bY - 26
-
-  // Role
-  ctx.fillStyle = 'rgba(200,210,180,0.75)'
-  ctx.font = `700 10px 'Trajan Pro', serif`
-  ctx.textAlign = 'center'
-  ctx.fillText(company.role, cx, y)
-  y -= 14
-
-  // First bullet (one wrapped line)
-  ctx.fillStyle = 'rgba(160,180,150,0.50)'
-  ctx.font = `400 9px 'Perpetua', serif`
-  const line = wrapText(ctx, `· ${company.bullets[0]}`, 200)[0]
-  if (line) ctx.fillText(line, cx, y)
-}
-
-// ─── Personal projects pavilion ────────────────────────────────────────────────
-
-function drawPavilion(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  groundY: number,
-  canvasWidth: number
-): void {
-  const img = getImage(ELEV_LIFT_SPRITE)
-
-  // Draw elev_lift sprite — scale to a reasonable size
+  const img     = getImage('/sprites/work/elev_lift.png')
   const targetH = Math.round(canvasWidth * 0.18)
   let drawW = targetH
   let drawH = targetH
 
-  if (img) {
-    drawW = Math.round(img.naturalWidth * targetH / (img.naturalHeight || targetH))
+  if (img && img.naturalWidth > 0) {
+    drawW = Math.round(img.naturalWidth * targetH / img.naturalHeight)
     drawH = targetH
-    const drawX = cx - drawW / 2
-    const drawY = groundY - drawH
+  }
+
+  const drawX  = cx - drawW / 2
+  const drawY  = groundY - drawH     // bottom of sprite rests at groundY
+
+  // Single centre rope — from ceiling anchor to sprite top
+  const anchorY = 58
+  const midY    = (anchorY + drawY) / 2
+  ctx.strokeStyle = 'rgba(150,115,68,0.80)'
+  ctx.lineWidth   = 2
+  ctx.beginPath()
+  ctx.moveTo(cx, anchorY)
+  ctx.quadraticCurveTo(cx + 8, midY, cx, drawY)
+  ctx.stroke()
+
+  // Nail at ceiling anchor
+  ctx.fillStyle = 'rgba(120,95,55,0.75)'
+  ctx.beginPath()
+  ctx.arc(cx, anchorY, 3.5, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Ambient teal glow around the pavilion
+  const glowR = Math.max(drawW, 80)
+  const glowCY = groundY - drawH * 0.5
+  const glow   = ctx.createRadialGradient(cx, glowCY, 0, cx, glowCY, glowR)
+  glow.addColorStop(0, 'rgba(30,180,140,0.10)')
+  glow.addColorStop(1, 'rgba(30,180,140,0)')
+  ctx.fillStyle = glow
+  ctx.beginPath()
+  ctx.arc(cx, glowCY, glowR, 0, Math.PI * 2)
+  ctx.fill()
+
+  // elev_lift sprite
+  if (img && img.naturalWidth > 0) {
     ctx.drawImage(img, drawX, drawY, drawW, drawH)
   } else {
-    // Fallback: simple domed structure
-    const dW = 90
-    const dH = 110
-    const dX = cx - dW / 2
-    const dY = groundY - dH
+    // Fallback: simple dome
+    const dW = 90, dH = 110
+    const dX = cx - dW / 2, dY = groundY - dH
     ctx.fillStyle = '#12242a'
     ctx.fillRect(dX, dY + 20, dW, dH - 20)
     ctx.fillStyle = '#1a3840'
     ctx.beginPath()
     ctx.arc(cx, dY + 20, dW / 2, Math.PI, 0)
     ctx.fill()
-    // Teal accent
     ctx.fillStyle = '#2abca0'
     ctx.fillRect(dX - 2, dY + 20, dW + 4, 3)
   }
 
-  // Ambient teal glow
-  const glowR = Math.max(drawW, 80)
-  const glow = ctx.createRadialGradient(cx, groundY - drawH * 0.5, 0, cx, groundY - drawH * 0.5, glowR)
-  glow.addColorStop(0, 'rgba(30,180,140,0.10)')
-  glow.addColorStop(1, 'rgba(30,180,140,0)')
-  ctx.fillStyle = glow
-  ctx.beginPath()
-  ctx.arc(cx, groundY - drawH * 0.5, glowR, 0, Math.PI * 2)
-  ctx.fill()
+  // Header label above the sprite
+  ctx.fillStyle    = 'rgba(100,215,175,0.95)'
+  ctx.font         = `700 13px 'Trajan Pro', serif`
+  ctx.textAlign    = 'center'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillText('Projects & Consulting', cx, drawY - 28)
 
-  // Header label
-  ctx.fillStyle = 'rgba(100,215,175,0.90)'
-  ctx.font = `700 11px 'Trajan Pro', serif`
-  ctx.textAlign = 'center'
-  ctx.fillText('Projects & Consulting', cx, groundY - drawH - 10)
-
-  // Project + consulting names listed below header
-  const allItems = [
-    ...consultingEngagements.map(c => `${c.client} — consulting`),
-    ...projects.map(p => p.name),
-  ]
-  ctx.fillStyle = 'rgba(80,195,155,0.55)'
-  ctx.font = `400 8px 'Perpetua', serif`
-  const lineH = 11
-  const startY = groundY - drawH - 24
-  // Draw two columns if many items
-  const mid = Math.ceil(allItems.length / 2)
-  const col1 = allItems.slice(0, mid)
-  const col2 = allItems.slice(mid)
-  const colGap = Math.round(drawW * 0.28)
-  col1.forEach((label, i) => {
-    ctx.textAlign = 'right'
-    ctx.fillText(label, cx - 4, startY - i * lineH)
-  })
-  col2.forEach((label, i) => {
-    ctx.textAlign = 'left'
-    ctx.fillText(label, cx + 4, startY - i * lineH)
-  })
   ctx.textAlign = 'left'
 }
 
@@ -227,60 +252,49 @@ function drawPavilion(
 
 export interface WorkTrigger {
   id:      string
-  worldX:  number   // screen X in room 0 (cameraX = 0 in work room)
-  roofY:   number   // Y of building roof
-  radius:  number   // horizontal proximity in px
+  worldX:  number
+  roofY:   number
+  radius:  number
   content: BubbleContent
 }
 
 export function getWorkTriggers(canvasW: number, groundY: number): WorkTrigger[] {
+  const islandTopY = groundY - ISLAND_OFFSET
+
   const triggers: WorkTrigger[] = COMPANIES.map((company, i) => ({
     id:      company.id,
     worldX:  canvasW * COMPANY_X[i],
-    roofY:   groundY - (BUILDING_H[company.id] ?? 140),
-    radius:  70,
+    roofY:   islandTopY - (company.current ? BOX_H_CUR : BOX_H_DEF),
+    radius:  80,
     content: workToBubble(company),
   }))
 
-  // Single pavilion trigger — covers all projects + consulting
-  const pavilionContent = pavilionToBubble(projects, consultingEngagements)
+  const pavilionH = Math.round(canvasW * 0.18)
   triggers.push({
     id:      'pavilion',
-    worldX:  canvasW * PAVILION_X,
-    roofY:   groundY - Math.round(canvasW * 0.18),
-    radius:  canvasW * 0.07,
-    content: pavilionContent,
+    worldX:  canvasW * PROJECTS_X,
+    roofY:   groundY - pavilionH,
+    radius:  Math.round(canvasW * 0.06),
+    content: pavilionToBubble(projects, consultingEngagements),
   })
 
   return triggers
 }
 
-// ─── Public draw function ──────────────────────────────────────────────────────
+// ─── Public draw function ─────────────────────────────────────────────────────
 
 export function drawWorkRoom(
-  ctx: CanvasRenderingContext2D,
+  ctx:         CanvasRenderingContext2D,
   canvasWidth: number,
-  groundY: number
+  groundY:     number,
 ): void {
-  // Floor tiles — tiled across full width
-  const floorImg = getImage('/sprites/town_floor_01.png')
-  if (floorImg && floorImg.naturalWidth > 0) {
-    const tileH = 50
-    const tileW = Math.round(floorImg.naturalWidth * tileH / floorImg.naturalHeight)
-    if (tileW > 0) {
-      for (let tx = 0; tx < canvasWidth; tx += tileW) {
-        ctx.drawImage(floorImg, tx, groundY, tileW, tileH)
-      }
-    }
-  }
+  // Hanging pavilion — centred between PwC and TechMahindra
+  drawHangingProjects(ctx, canvasWidth * PROJECTS_X, groundY, canvasWidth)
 
-  // Pavilion — personal projects + consulting — far left
-  drawPavilion(ctx, canvasWidth * PAVILION_X, groundY, canvasWidth)
-
-  // Company buildings
+  // Islands + logo boxes for each company (oldest → newest, left → right)
   COMPANIES.forEach((company, i) => {
     const cx = canvasWidth * COMPANY_X[i]
-    drawCompanyBuilding(ctx, company, cx, groundY)
-    drawCompanyText(ctx, company, cx, groundY)
+    drawIsland(ctx, cx, groundY, !!company.current)
+    drawLogoBox(ctx, company, cx, groundY)
   })
 }
