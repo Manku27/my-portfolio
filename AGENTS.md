@@ -1,4 +1,5 @@
 # AGENTS.md — Mayank Portfolio
+
 > Read this before touching any code. This file exists so every coding session
 > starts with full context. Update it when decisions change.
 > Last updated: March 2026.
@@ -43,7 +44,7 @@ Game design: `docs/game-design.md`
 ```
 
 - Visitor spawns at centre on a floating island
-- Left → work world (companies, projects, consulting)
+- Left → work world (companies, projects)
 - Right → timeline world (life diary, recent first)
 - Fall off island into the void → About Me vertical descent world
 - Charm system (Tab key) routes to other worlds
@@ -62,14 +63,14 @@ game framework. Hand-rolled 2D platformer physics.
 
 ## Stack
 
-| Layer | Choice |
-|---|---|
-| Framework | Next.js 16.2.1 — App Router |
-| Language | TypeScript — strict |
-| Game engine | Canvas 2D + requestAnimationFrame |
-| Fonts | Trajan Pro (headings), Perpetua (body) — in public/fonts/ |
-| Styling | Tailwind CSS v4 (UI only) |
-| Hosting | Vercel / manku27.dev |
+| Layer       | Choice                                                    |
+| ----------- | --------------------------------------------------------- |
+| Framework   | Next.js 16.2.1 — App Router                               |
+| Language    | TypeScript — strict                                       |
+| Game engine | Canvas 2D + requestAnimationFrame                         |
+| Fonts       | Trajan Pro (headings), Perpetua (body) — in public/fonts/ |
+| Styling     | Tailwind CSS v4 (UI only)                                 |
+| Hosting     | Vercel / manku27.dev                                      |
 
 ---
 

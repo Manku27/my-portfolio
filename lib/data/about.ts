@@ -39,9 +39,7 @@ What I didn't expect was to actually love it.
 
 In five years I've grown 7x in salary, moved from automation scripts at
 Infosys to leading the fullstack rebuild of a major international hospitality
-platform at Merkle, and picked up international consulting clients who found
-me through referral — not cold outreach. That last part matters. It means the
-market trusts me without me having to sell myself.
+platform at Merkle. The work speaks for itself.
 
 The pattern I've noticed: I hit walls, I don't quit, I find a different way
 through. This has worked every single time.`,
@@ -121,10 +119,10 @@ purpose.`,
   strengths: [
     'Ships things consistently.',
     '7x salary growth in 5 years from a standing start with zero family advantage.',
-    'Referral-driven consulting — the market trusts him without self-promotion.',
+    'Ships things consistently — side projects, open source, and full-time delivery in parallel.',
     'Certified in a niche but commercially valuable stack (Contentful + Cloudinary).',
     'Writes, teaches, and builds — rare combination at this level.',
-    'International client experience (Wohana, Vienna).',
+    'International exposure — has worked across domains, geographies, and constraints.',
     'Adapts to any domain without losing depth.',
   ],
 

@@ -61,34 +61,7 @@ export const workExperience: WorkExperience[] = [
   },
 ]
 
-export const consultingEngagements: ConsultingEngagement[] = [
-  {
-    id: 'wohana',
-    client: 'Wohana',
-    clientDescription: 'Early-stage startup digitizing the rental market in Vienna, Austria',
-    location: 'Vienna, Austria (Remote)',
-    period: 'October 2024 – Present',
-    ongoing: true,
-    bullets: [
-      'Sole technical owner — responsible for system design, implementation, and end-to-end delivery.',
-      'Integrated Sproof e-signature workflows to enable legally binding digital tenancy contracts across jurisdictions.',
-      'Built document handling pipelines and automated contract generation from scratch.',
-    ],
-  },
-  {
-    id: 'raisematters',
-    client: 'RaiseMatters',
-    clientDescription: 'Defence sector technology consultancy',
-    location: 'Remote',
-    period: 'September 2023 – July 2024',
-    ongoing: false,
-    bullets: [
-      'Built fullstack products for defence industry clients operating in low-connectivity field environments.',
-      'Engineered an offline-first PWA using IndexedDB for local storage with background sync to a Node.js/MySQL backend — ensuring zero data loss during network intermittency.',
-      'Built live system monitoring dashboards and digitized field form-capture workflows for mission-critical operations.',
-    ],
-  },
-]
+export const consultingEngagements: ConsultingEngagement[] = []
 
 export const projects: Project[] = [
   {

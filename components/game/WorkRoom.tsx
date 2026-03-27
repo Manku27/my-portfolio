@@ -269,7 +269,7 @@ function drawHangingProjects(
   ctx.font = `700 13px 'Trajan Pro', serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText("Projects & Consulting", cx, drawY - 28);
+  ctx.fillText("Projects", cx, drawY - 28);
 
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
@@ -348,7 +348,7 @@ export function drawSkillBar(
   const alpha = Math.max(0, 1 - bubbleProgress * 12);
   if (alpha <= 0.01) return;
 
-  const iconH = Math.round(canvasH * 0.10);
+  const iconH = Math.round(canvasH * 0.1);
   const margin = canvasW * 0.22;
   const span = canvasW - margin * 2;
   const step = span / (SKILL_SRCS.length - 1);
