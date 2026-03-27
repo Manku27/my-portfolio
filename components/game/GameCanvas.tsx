@@ -43,7 +43,7 @@ import {
   updateBricks,
   checkBrickCollisions,
   drawBricks,
-  ISLAND_Y,
+  getIslandY,
 } from "./Bricks";
 import {
   drawCharmMenu,
@@ -310,7 +310,7 @@ export function GameCanvas() {
     const groundY = () => Math.round(canvas.height * GROUND_Y_FAC);
 
     let charX = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2;
-    let charY = groundY() - ISLAND_Y - CHARACTER_H;
+    let charY = groundY() - getIslandY(canvas.height) - CHARACTER_H;
     let velY = 0;
     let isGrounded = true;
     let jumpsLeft = 2;
@@ -331,6 +331,8 @@ export function GameCanvas() {
       );
 
       const ground = groundY();
+      // Keep spawn island brick collision in sync with canvas height
+      bricks[0].yFromGround = getIslandY(canvas.height);
 
       if (worldMode === "horizontal") {
         // ── Horizontal movement ─────────────────────────────────────────────
@@ -431,8 +433,8 @@ export function GameCanvas() {
         // Lamp glow
         if (currentRoom === 1) {
           const dist = Math.hypot(
-            mouseX - getLampX(canvas.width),
-            mouseY - lampBulbY(ground - ISLAND_Y, canvas.width),
+            mouseX - getLampX(canvas.width, canvas.height),
+            mouseY - lampBulbY(ground - getIslandY(canvas.height), canvas.width, canvas.height),
           );
           lampGlow = lerp(
             lampGlow,
@@ -629,7 +631,7 @@ export function GameCanvas() {
             : undefined,
           currentRoom === 1 ? spawnAssets : undefined,
         );
-        drawBricks(ctx, bricks, cameraX, ground, canvas.width, platImg);
+        drawBricks(ctx, bricks, cameraX, ground, canvas.width, platImg, canvas.height);
         if (currentRoom === 1)
           drawParticles(ctx, particles, canvas.width, canvas.height, time);
         if (currentRoom === 1) {
@@ -648,7 +650,8 @@ export function GameCanvas() {
           drawSpawnBench(
             ctx,
             canvas.width,
-            ground - ISLAND_Y,
+            canvas.height,
+            ground - getIslandY(canvas.height),
             spawnAssets.benchImg,
           );
         drawCharacter(
@@ -715,8 +718,9 @@ export function GameCanvas() {
         }
         if (hintsVisible) {
           const cx = canvas.width / 2;
-          const r1y = canvas.height - 32 - 24;
-          const r2y = canvas.height - 32;
+          const uiSc = Math.min(1.4, Math.max(0.85, canvas.width / 1400));
+          const r2y = canvas.height - Math.round(32 * uiSc);
+          const r1y = r2y - Math.round(24 * uiSc);
           ctx.font = `400 15px 'Perpetua', serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "bottom";

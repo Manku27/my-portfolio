@@ -11,9 +11,16 @@ export interface Brick {
   shake: number       // shake timer (seconds remaining, counts down to 0)
 }
 
-// Height of the central island top above groundY.
-// Referenced in GameCanvas for spawn position, bench, and lamp bulb Y.
+// Height of the central island top above groundY at reference 1080px height.
+// Use getIslandY(canvasH) everywhere — ISLAND_Y is only the initial brick value.
 export const ISLAND_Y = 220
+
+// Scales ISLAND_Y proportionally with canvas height so the island stays at the
+// same visual position on all screen sizes (lower on laptops, higher on monitors).
+export function getIslandY(canvasH: number): number {
+  // 0.204 = ISLAND_Y / (1080 * GROUND_Y_FAC) keeps island at ~68% from top
+  return Math.min(220, Math.max(110, Math.round(canvasH * 0.204)));
+}
 
 // Bricks placed in spawn room (room 1).
 // Single wide central island — character spawns on top of it.
@@ -91,7 +98,8 @@ export function drawBricks(
   cameraX: number,
   groundY: number,
   canvasWidth: number,
-  platImg?: HTMLImageElement | null
+  platImg?: HTMLImageElement | null,
+  canvasHeight = 1080,
 ): void {
   for (const brick of bricks) {
     // Room 0 (work world) visuals are drawn by WorkRoom.tsx — skip here
@@ -108,8 +116,8 @@ export function drawBricks(
     const screenY = baseY + shakeOffset
 
     if (platImg && brick.room === 1) {
-      // Sprite platform — scale up on larger screens; centre visual on collision box
-      const uiScale = Math.min(1.4, Math.max(1.0, canvasWidth / 1200))
+      // Sprite platform — scale with screen size; centre visual on collision box
+      const uiScale = Math.min(1.4, Math.max(0.85, canvasWidth / 1400))
       const vW  = Math.round(brick.w * uiScale)
       const drawH = Math.round(platImg.naturalHeight * vW / (platImg.naturalWidth || vW)) || 40
       const vX  = screenX - Math.round((vW - brick.w) / 2)

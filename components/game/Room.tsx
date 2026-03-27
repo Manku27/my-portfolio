@@ -3,7 +3,7 @@ import { drawTimelineRoom } from "./TimelineRoom";
 import { drawWorkRoom } from "./WorkRoom";
 import { profile } from "@/lib/data/index";
 import { getImage } from "@/utils/loadAssets";
-import { ISLAND_Y } from "./Bricks";
+import { getIslandY } from "./Bricks";
 // roomIndex: 0 = work (left), 1 = spawn (centre), 2 = timeline (right)
 
 const ROOM_TINTS = ["#070a06", "#050a0a", "#050d0a", "#05080e"];
@@ -17,12 +17,12 @@ const LAMP_SPRITE_H = 200; // station_pole.png draw height
 const BENCH_CENTRE_FAC = 0.5;
 const LAMP_BENCH_OFFSET = 115; // px
 
-export function getLampX(canvasW: number): number {
-  return canvasW * BENCH_CENTRE_FAC - LAMP_BENCH_OFFSET;
+export function getLampX(canvasW: number, canvasH = 1080): number {
+  return canvasW * BENCH_CENTRE_FAC - LAMP_BENCH_OFFSET * Math.min(1.0, spawnScale(canvasW, canvasH));
 }
 
-export function lampBulbY(groundY: number, canvasW = 1280): number {
-  return groundY - Math.round(LAMP_SPRITE_H * spawnScale(canvasW)) + 15;
+export function lampBulbY(groundY: number, canvasW = 1280, canvasH = 1080): number {
+  return groundY - Math.round(LAMP_SPRITE_H * spawnScale(canvasW, canvasH)) + 15;
 }
 
 // ─── Spawn room asset bundle ───────────────────────────────────────────────────
@@ -35,11 +35,11 @@ export interface SpawnAssets {
 }
 
 // ─── UI scale ─────────────────────────────────────────────────────────────────
-// Scales spawn-room assets proportionally on larger screens.
-// 1.0× at 1200px, 1.4× at 1680px, capped at 1.4×.
+// Scales spawn-room assets proportionally with screen size.
+// 1.4× at 1920×1080 (reference monitor), ~1.0× at 1366×768 (laptop), floor 0.75×.
 
-export function spawnScale(canvasW: number): number {
-  return Math.min(1.4, Math.max(1.0, canvasW / 1200));
+export function spawnScale(canvasW: number, canvasH = 1080): number {
+  return Math.min(1.4, Math.max(0.85, canvasW / 1400));
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -489,9 +489,10 @@ function drawSpawnSignposts(
   groundY: number,
   sign1Img: HTMLImageElement | null = null,
   sign2Img: HTMLImageElement | null = null,
+  canvasH = 1080,
 ): void {
   const fs = Math.max(16, Math.floor(w * 0.02));
-  const spriteH = Math.round(175 * spawnScale(w));
+  const spriteH = Math.round(175 * spawnScale(w, canvasH));
 
   function drawSignSprite(
     img: HTMLImageElement,
@@ -628,15 +629,15 @@ export function drawRoomEnvironment(
   if (roomIndex === 1) {
     drawSpawnGroundGlow(ctx, canvasWidth, groundY);
 
-    // Central lamp — sits on top of the elevated island (groundY - ISLAND_Y)
-    const islandY = groundY - ISLAND_Y;
+    // Central lamp — sits on top of the elevated island (groundY - getIslandY)
+    const islandY = groundY - getIslandY(canvasHeight);
     drawLampPost(
       ctx,
-      getLampX(canvasWidth),
+      getLampX(canvasWidth, canvasHeight),
       islandY,
       lampGlow,
       spawnAssets?.poleImg ?? null,
-      spawnScale(canvasWidth),
+      spawnScale(canvasWidth, canvasHeight),
     );
 
     drawVignette(ctx, canvasWidth, canvasHeight);
@@ -646,9 +647,13 @@ export function drawRoomEnvironment(
       groundY,
       spawnAssets?.sign1Img ?? null,
       spawnAssets?.sign2Img ?? null,
+      canvasHeight,
     );
 
-    // Void label — single line centred in the gap
+    // Void label — anchored below island sprite bottom (wp_plat_float_01.png: 266×68px)
+    // 72 ≈ 68 × 280 / 266 (sprite aspect × collision width), +20px gap
+    const platSpriteH = Math.round(72 * spawnScale(canvasWidth));
+    const labelY = groundY - getIslandY(canvasHeight) + platSpriteH + 20;
     const labelFs = Math.max(14, Math.floor(canvasWidth * 0.018));
     ctx.font = `400 ${labelFs}px 'Perpetua', serif`;
     ctx.fillStyle = "rgba(120,190,165,0.65)";
@@ -659,7 +664,7 @@ export function drawRoomEnvironment(
     ctx.fillText(
       "↓  Fall to know more about Mayank's life",
       canvasWidth / 2,
-      groundY - 80,
+      labelY,
     );
     ctx.shadowBlur = 0;
     ctx.textAlign = "left";
@@ -689,8 +694,9 @@ export function drawRoomEnvironment(
 export function drawSpawnBench(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
+  canvasHeight: number,
   groundY: number,
   benchImg: HTMLImageElement | null,
 ): void {
-  drawBench(ctx, canvasWidth * 0.5, groundY, benchImg, spawnScale(canvasWidth));
+  drawBench(ctx, canvasWidth * 0.5, groundY, benchImg, spawnScale(canvasWidth, canvasHeight));
 }
