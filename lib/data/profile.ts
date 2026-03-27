@@ -6,7 +6,7 @@ export const profile: Profile = {
   tagline: 'I build things because they need to exist.',
   location: 'Kolkata, India',
   email: 'jjmayank98@gmail.com',
-  shortBio: 'Senior Fullstack Engineer. 5 years. React, Next.js, TypeScript, Node.js. Remote-first.',
+  shortBio: 'Senior Fullstack Engineer · 5 years · React, Next.js, TypeScript, Node.js · Contentful Certified · Currently at Merkle (Dentsu) · Open to international remote roles.',
   bio: `I'm a Senior Fullstack Engineer based in Kolkata with five years of experience across adtech, hospitality, e-commerce, defence, and real estate. I currently rebuild the web platform for Leading Hotels of the World at Merkle, and independently consult for international product startups.
 
 I started at 3.5 LPA and grew 7x in five years — not through a plan, but by consistently shipping things that mattered and staying curious enough to keep learning.
