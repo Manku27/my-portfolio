@@ -3,6 +3,7 @@ import { drawTimelineRoom } from "./TimelineRoom";
 import { drawWorkRoom } from "./WorkRoom";
 import { profile } from "@/lib/data/index";
 import { getImage } from "@/utils/loadAssets";
+import { ISLAND_Y } from "./Bricks";
 // roomIndex: 0 = work (left), 1 = spawn (centre), 2 = timeline (right)
 
 const ROOM_TINTS = ["#070a06", "#050a0a", "#050d0a", "#05080e"];
@@ -628,8 +629,7 @@ export function drawRoomEnvironment(
     drawSpawnGroundGlow(ctx, canvasWidth, groundY);
 
     // Central lamp — sits on top of the elevated island (groundY - ISLAND_Y)
-    // Keep in sync with ISLAND_Y in Bricks.tsx
-    const islandY = groundY - 260;
+    const islandY = groundY - ISLAND_Y;
     drawLampPost(
       ctx,
       getLampX(canvasWidth),

@@ -13,7 +13,7 @@ export interface Brick {
 
 // Height of the central island top above groundY.
 // Referenced in GameCanvas for spawn position, bench, and lamp bulb Y.
-export const ISLAND_Y = 260
+export const ISLAND_Y = 220
 
 // Bricks placed in spawn room (room 1).
 // Single wide central island — character spawns on top of it.
