@@ -1,19 +1,23 @@
 # AGENTS.md — Mayank Portfolio
 > Read this before touching any code. This file exists so every coding session
 > starts with full context. Update it when decisions change.
+> Last updated: March 2026.
 
 ---
 
 ## Instructions for every session
 
 - Read this file fully before writing any code
-- Read `docs/portfolio-ideation.md` for concept and decisions
+- Read `docs/build-objectives.md` for what is done and what is next
+- Read `docs/assets-map.md` for every asset filename, path, and usage
 - Read `docs/game-design.md` for game mechanics, world layout, and aesthetic
 - Check `utils/` before creating any utility function — it may already exist
 - Put all new utility functions in `utils/` — never inline in components
 - Always verify latest stable version before installing any new package
 - All data imports come from `lib/data/index.ts` — never individual files
 - Never hardcode content in components or pages
+- Never modify image files without explicit confirmation from Mayank
+- Always check `img.mode` and corner pixel alpha before assuming background
 
 ---
 
@@ -23,13 +27,6 @@ A **playable 2D side-scrolling platformer that is also a portfolio**.
 
 The game IS the navigation. No traditional nav bar, no links, no menus.
 The world is the resume, the diary, the work history. You walk through it.
-
-The person behind this site: grew up poor, fought to go to Kota for JEE
-prep, had a mental breakdown, was pulled back by Batman and Spider-Man
-(literally), landed at Jadavpur University, barely graduated with multiple
-backlogs, chose web development for financial pragmatism, started at 3.5
-LPA, grew 7x in five years from zero family advantage. Comics are not a
-hobby — they rebuilt him. He builds things because they need to exist.
 
 Full personal story: `lib/data/about.ts`
 Full ideation: `docs/portfolio-ideation.md`
@@ -41,26 +38,25 @@ Game design: `docs/game-design.md`
 
 ```
 ← [Work world]    [Spawn / Landing]    [Timeline world] →
+                         ↓ fall into void
+                    [About Me world]
 ```
 
-- Visitor spawns at centre
+- Visitor spawns at centre on a floating island
 - Left → work world (companies, projects, consulting)
 - Right → timeline world (life diary, recent first)
-- Charm system routes to other worlds (books, movies, writing, games)
+- Fall off island into the void → About Me vertical descent world
+- Charm system (Tab key) routes to other worlds
 - Camera: room-based snapping — not smooth follow
-- Controls: arrow keys / WASD + space to jump (single jump)
-- Mobile: out of scope — show "desktop only" message
+- Controls: arrow keys / WASD + space/up to jump, double jump supported
+- Mobile: separate endless runner (parked — see docs/mobile-ideation.md)
 
 ---
 
 ## Game engine
 
 **Canvas 2D with requestAnimationFrame.** Not R3F, not Rapier, not a
-game framework. Hand-rolled 2D platformer physics — gravity, velocity,
-AABB collision detection. Canvas 2D is the correct tool for a 2D game.
-
-The 3D POC in `components/3d/` is a separate experiment. The game world
-renders on a 2D canvas, not WebGL.
+game framework. Hand-rolled 2D platformer physics.
 
 ---
 
@@ -69,39 +65,11 @@ renders on a 2D canvas, not WebGL.
 | Layer | Choice |
 |---|---|
 | Framework | Next.js 16.2.1 — App Router |
-| Language | TypeScript — strict, always |
+| Language | TypeScript — strict |
 | Game engine | Canvas 2D + requestAnimationFrame |
-| Animation | GSAP + @gsap/react (UI/transitions, not game loop) |
-| Styling | Tailwind CSS v4 (UI only, not game canvas) |
-| Database | Neon (Postgres) — NOT YET WIRED |
-| Image storage | Vercel Blob — NOT YET WIRED |
-| Auth | Not implemented yet |
-| Hosting | Vercel |
-
----
-
-## Installed packages
-
-```json
-"dependencies": {
-  "next": "16.2.1",
-  "react": "19.x",
-  "react-dom": "19.x",
-  "three": "latest",
-  "@react-three/fiber": "9.x",
-  "@react-three/drei": "10.x",
-  "gsap": "latest",
-  "@gsap/react": "latest",
-  "lenis": "latest"
-}
-```
-
-three / R3F / Drei remain installed but are used only for the POC experiment
-at `/poc`. The game world does not use them.
-
-Not yet installed:
-- `@neondatabase/serverless`
-- `@vercel/blob`
+| Fonts | Trajan Pro (headings), Perpetua (body) — in public/fonts/ |
+| Styling | Tailwind CSS v4 (UI only) |
+| Hosting | Vercel / manku27.dev |
 
 ---
 
@@ -109,111 +77,85 @@ Not yet installed:
 
 ```
 app/
-  layout.tsx            Root layout
-  page.tsx              Entry point — loads the game
-  poc/
-    page.tsx            3D particle POC — experiment only, not the game
+  layout.tsx            Root layout — full metadata, OG, canonical
+  page.tsx              Entry point — loads GameCanvas
+  icon.png              Favicon (Knight mask)
+  opengraph-image.png   OG image (1200×630, game palette)
 
-components/
-  3d/                   R3F POC components — experiment only
-  game/                 Canvas 2D game components — the actual product
-    GameCanvas.tsx      Main canvas, game loop, input handling
-    World.tsx           World state, room management
-    Character.tsx       Player character — Knight sprite + physics
-    ParallaxLayer.tsx   Background depth layers
-    Room.tsx            Individual room/section rendering
-    CharmMenu.tsx       Charm inventory UI overlay
+components/game/        Canvas 2D game — the actual product
+  GameCanvas.tsx        Main canvas, game loop, all input handling
+  Character.tsx         Knight sprite + physics
+  ParallaxLayer.tsx     Background depth layers (bloom + vines)
+  Room.tsx              Spawn room rendering
+  WorkRoom.tsx          Work world buildings, pavilion, triggers
+  TimelineRoom.tsx      Timeline world (stub)
+  AboutRoom.tsx         About Me vertical world (stub)
+  Bricks.tsx            Floating platforms, collision
+  CharmMenu.tsx         Charm inventory UI overlay (Tab key)
+  SpeechBubble.tsx      Hollow Knight dialogue box (fixed top of screen)
+  SocialHUD.tsx         Social icons + resume download (top-left HUD)
+  Particles.tsx         Ambient particle system
 
 lib/
   types.ts              All TypeScript interfaces
+  sprites/
+    knight-frames.ts    Knight sprite frame map — never re-derive
   data/
-    index.ts            Barrel export — only import point
-    about.ts            Full personal story and values
-    profile.ts          Name, bio, socials, skills
-    work.ts             Work experience, consulting, projects
-    timeline.ts         Timeline entries
-    books.ts            Reading log
-    movies.ts           Watch history
-    games.ts            Gaming log
-    videos.ts           YouTube videos
+    index.ts            Only import point — barrel export
+    about.ts, profile.ts, work.ts, timeline.ts
+    books.ts, movies.ts, games.ts, videos.ts
 
-utils/                  Reusable helpers — check here first
+utils/
+  loadAssets.ts         Image cache — loadImage(), getImage()
+  audio.ts              Ambient music init — triggers on first keypress
+  lerp.ts               Linear interpolation helper
+  wrapText.ts           Canvas text word-wrap helper
+
 public/
-  sprites/              Game sprite sheets and assets
-docs/
-  portfolio-ideation.md Full ideation and concept
-  game-design.md        Game mechanics, world layout, aesthetic spec
+  sprites/              Spawn room assets
+  sprites/work/         Work world assets (logos + props)
+  fonts/                Trajan Pro + Perpetua
+  audio/                HKnight-Greenpath.mp3
+  resume.pdf            Mayank's resume — served at /resume.pdf
+  docs/
+    build-objectives.md   What's done and what's next
+    assets-map.md         Every asset, filename, path, usage
+    game-design.md        Mechanics and aesthetic spec
+    mobile-ideation.md    Endless runner concept (parked)
+    portfolio-ideation.md Concept and all decisions
 ```
 
 ---
 
-## Data layer
+## Asset rules
 
-No database connected yet. Static files in `lib/data/`.
-
-- Types: `lib/types.ts`
-- Import only from: `lib/data/index.ts`
-- When DB wired: only `lib/data/index.ts` exports change
-
-The data layer is agnostic to render target — same data whether rendered
-as a game world or a conventional web page.
-
----
-
-## Aesthetic
-
-Hollow Knight — Greenpath. Deep teal-black, bioluminescent light, sparse
-particles, parallax depth. Full spec in `docs/game-design.md`.
-
-Palette:
-- Background: `#050a0a` to `#0a1a1a`
-- Light: bioluminescent teal-green, cold white wisps
-- Accent: faint amber/gold
+- All spawn room assets: `public/sprites/` → reference as `/sprites/filename`
+- All work world assets: `public/sprites/work/` → `/sprites/work/filename`
+- Load via `loadImage()` from `utils/loadAssets.ts` — NEVER inside render loop
+- Access cached images with `getImage(path)` inside draw functions
+- Work world logos MUST be pre-loaded in GameCanvas.tsx `preloadFonts()` asset list
+- Never modify image files without asking Mayank first
 
 ---
 
 ## Conventions
 
 - Named exports only from `lib/` and `utils/`
-- No inline styles — Tailwind for UI, Canvas API for game
+- No inline styles — Canvas API for game rendering
 - No `any` — strict TypeScript
 - PascalCase component files, one component per file
 - No hardcoded content — everything from `lib/data/index.ts`
 - Check `utils/` before writing any helper
-- Verify latest stable version before installing packages
 
 ---
 
-## Build order
+## Key decisions made (do not revisit without discussion)
 
-1. ✅ Scaffold
-2. ✅ Packages installed
-3. ✅ `lib/types.ts` — all types defined
-4. ✅ `lib/data/` — seeded with real data
-5. ✅ `app/poc/` — 3D particle experiment (parked, not the game)
-6. ⬜ **Game canvas foundation** — Canvas 2D setup, game loop, input
-7. ⬜ **Character** — Knight sprite, movement, single jump, gravity
-8. ⬜ **Spawn room** — landing zone, atmospheric, two paths visible
-9. ⬜ **Parallax layers** — three depth layers, cursor-reactive foreground
-10. ⬜ **Timeline world** — rooms to the right, entries as world objects
-11. ⬜ **Work world** — rooms to the left, buildings per company
-12. ⬜ **Charm system** — inventory UI, routing between worlds
-13. ⬜ **Interactive objects** — bricks, shake feedback
-14. ⬜ **Other worlds** — books, movies, writing, games
-15. ⬜ **Polish** — particles, ambient sound (later), performance
-16. ⬜ **Admin + DB** — content management, Neon wired
-17. ⬜ **Auth** — protect admin
-
----
-
-## What is NOT done yet
-
-- No game canvas
-- No character
-- No game world
-- No charm system
-- No database
-- No auth
-- No Vercel Blob
-- `components/game/` does not exist yet
-- `public/sprites/` does not exist yet
+- Game engine: Canvas 2D only — not R3F, not Rapier
+- Dialogue box: fixed top-of-screen, Hollow Knight Elderbug style
+  No tail, no pointer, no floating bubble — see SpeechBubble.tsx
+- Dialogue pagination: Space/Enter to advance pages (not scroll)
+- Bubble scroll bug fix: compare by trigger `id` string not content object reference
+- Wohana and RaiseMatters: under personal projects pavilion, NOT standalone buildings
+- Mobile: separate endless runner with mode select menu (Career/Timeline/About)
+- Consultation clients: deliberately low-profile for international audience

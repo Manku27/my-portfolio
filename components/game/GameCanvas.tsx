@@ -24,7 +24,7 @@ import {
 } from "./AboutRoom";
 import { getWorkTriggers, type WorkTrigger } from "./WorkRoom";
 import { getTimelineTriggers, type TimelineTrigger } from "./TimelineRoom";
-import { drawSpeechBubble, type BubbleContent } from "./SpeechBubble";
+import { drawSpeechBubble, getLastBubbleBtnRects, type BubbleContent } from "./SpeechBubble";
 import {
   drawParallaxBackground,
   drawParallaxForeground,
@@ -79,9 +79,14 @@ export function GameCanvas() {
     let mouseX = -9999;
     let mouseY = -9999;
     let hudHovered = -1; // index of hovered social icon, -1 = none
+
+    const hitRect = (r: {x:number;y:number;w:number;h:number}, x: number, y: number) =>
+      x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+
     const onMouseMove = (e: MouseEvent) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
+      const r = canvas.getBoundingClientRect();
+      mouseX = (e.clientX - r.left) * (canvas.width  / (r.width  || 1));
+      mouseY = (e.clientY - r.top)  * (canvas.height / (r.height || 1));
       if (charmOpen) {
         const hit = getCharmAtPoint(
           mouseX,
@@ -92,9 +97,37 @@ export function GameCanvas() {
         if (hit !== -1) charmSelected = hit;
       }
       hudHovered = getSocialHudHit(mouseX, mouseY);
-      canvas.style.cursor = hudHovered !== -1 ? "pointer" : "default";
+      const btnsHover = getLastBubbleBtnRects();
+      const overBtn = btnsHover
+        ? hitRect(btnsHover.up, mouseX, mouseY) || hitRect(btnsHover.down, mouseX, mouseY)
+        : false;
+      canvas.style.cursor = (hudHovered !== -1 || overBtn) ? "pointer" : "default";
     };
+
+    const canvasCoords = (e: MouseEvent) => {
+      const r    = canvas.getBoundingClientRect();
+      const scaleX = canvas.width  / (r.width  || 1);
+      const scaleY = canvas.height / (r.height || 1);
+      return { cx: (e.clientX - r.left) * scaleX, cy: (e.clientY - r.top) * scaleY };
+    };
+
     const onMouseClick = (e: MouseEvent) => {
+      // Dialogue pagination buttons — check before anything else
+      if (bubbleProgress > 0.5) {
+        const btns = getLastBubbleBtnRects();
+        if (btns) {
+          const { cx, cy } = canvasCoords(e);
+          if (hitRect(btns.up, cx, cy)) {
+            bubblePage = Math.max(0, bubblePage - 1);
+            return;
+          }
+          if (hitRect(btns.down, cx, cy)) {
+            bubblePage += 1;
+            return;
+          }
+        }
+      }
+
       // Social HUD icon click — always active, takes priority
       const hudHit = getSocialHudHit(e.clientX, e.clientY);
       if (hudHit !== -1) {
@@ -166,10 +199,10 @@ export function GameCanvas() {
     let nameGlow = 0;
 
     // Speech bubble state
-    let bubbleProgress = 0;
+    let bubbleProgress  = 0;
+    let bubblePage      = 0;
+    let activeBubbleId: string | null = null;
     let bubbleContent: BubbleContent | null = null;
-    let bubbleAnchorX = 0;
-    let bubbleAnchorY = 0;
 
     // Vertical world (About Me) state
     let worldMode = "horizontal" as "horizontal" | "vertical";
@@ -214,6 +247,21 @@ export function GameCanvas() {
           window.location.hash = getCharmId(charmSelected);
         return; // block all other keys when menu is open
       }
+
+      // Dialogue page navigation
+      if (bubbleContent && bubbleProgress > 0.9) {
+        if (e.code === "Enter") {
+          e.preventDefault();
+          bubblePage += 1;
+          return;
+        }
+        if (e.code === "Backspace") {
+          e.preventDefault();
+          bubblePage = Math.max(0, bubblePage - 1);
+          return;
+        }
+      }
+
       keys.add(e.code);
       if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
         // Return from About Me world when standing on the last platform
@@ -240,6 +288,7 @@ export function GameCanvas() {
     const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code);
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
+
 
     const groundY = () => Math.round(canvas.height * GROUND_Y_FAC);
 
@@ -387,12 +436,19 @@ export function GameCanvas() {
             }
           }
           if (hit) {
+            if (hit.id !== activeBubbleId) {
+              bubblePage = 0;
+              activeBubbleId = hit.id;
+            }
             bubbleContent = hit.content;
-            bubbleAnchorX = hit.worldX; // room 0: cameraX=0, worldX = screenX
-            bubbleAnchorY = hit.roofY;
-            bubbleProgress = lerp(bubbleProgress, 1, 0.15);
+            bubbleProgress = Math.min(1, bubbleProgress + delta * 1.8);
           } else {
-            bubbleProgress = lerp(bubbleProgress, 0, 0.12);
+            bubbleProgress = Math.max(0, bubbleProgress - delta * 2.5);
+            if (bubbleProgress <= 0) {
+              bubblePage = 0;
+              activeBubbleId = null;
+              bubbleContent = null;
+            }
           }
         } else if (currentRoom >= 2) {
           const triggers = getTimelineTriggers(canvas.width, ground);
@@ -404,15 +460,27 @@ export function GameCanvas() {
             }
           }
           if (hit) {
+            if (hit.id !== activeBubbleId) {
+              bubblePage = 0;
+              activeBubbleId = hit.id;
+            }
             bubbleContent = hit.content;
-            bubbleAnchorX = hit.worldX - currentRoom * canvas.width; // world → screen X
-            bubbleAnchorY = hit.roofY;
-            bubbleProgress = lerp(bubbleProgress, 1, 0.15);
+            bubbleProgress = Math.min(1, bubbleProgress + delta * 1.8);
           } else {
-            bubbleProgress = lerp(bubbleProgress, 0, 0.12);
+            bubbleProgress = Math.max(0, bubbleProgress - delta * 2.5);
+            if (bubbleProgress <= 0) {
+              bubblePage = 0;
+              activeBubbleId = null;
+              bubbleContent = null;
+            }
           }
         } else {
-          bubbleProgress = lerp(bubbleProgress, 0, 0.18);
+          bubbleProgress = Math.max(0, bubbleProgress - delta * 2.5);
+          if (bubbleProgress <= 0) {
+            bubblePage = 0;
+            activeBubbleId = null;
+            bubbleContent = null;
+          }
         }
       } else {
         // ── Vertical world (About Me) ────────────────────────────────────────
@@ -586,12 +654,11 @@ export function GameCanvas() {
       if (bubbleContent && bubbleProgress > 0.01) {
         drawSpeechBubble(
           ctx,
-          bubbleAnchorX,
-          bubbleAnchorY,
           bubbleContent,
           bubbleProgress,
           canvas.width,
           canvas.height,
+          bubblePage,
         );
       }
 
@@ -725,6 +792,12 @@ export function GameCanvas() {
         ["/sprites/social_medium.webp", () => {}],
         ["/sprites/social_whatsapp.png", () => {}],
         ["/sprites/social_discord.webp", () => {}],
+        // Work world logos
+        ['/sprites/work/merkle.webp',       () => {}],
+        ['/sprites/work/Tech_Mahindra.png', () => {}],
+        ['/sprites/work/pwc.png',           () => {}],
+        ['/sprites/work/Infosys.webp',      () => {}],
+        ['/sprites/work/elev_lift.png',     () => {}],
       ];
 
       await Promise.all([

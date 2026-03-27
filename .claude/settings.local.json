@@ -10,7 +10,11 @@
       "Bash(powershell -Command \"Stop-Process -Id 18132 -Force\")",
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__list_pages",
       "mcp__plugin_playwright_playwright__browser_navigate",
-      "mcp__plugin_playwright_playwright__browser_take_screenshot"
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "mcp__plugin_playwright_playwright__browser_press_key",
+      "Bash($content = Get-Content \"C:\\\\code\\\\mayank-portfolio\\\\components\\\\game\\\\GameCanvas.tsx\" -Raw)",
+      "Bash(Set-Content \"C:\\\\code\\\\mayank-portfolio\\\\components\\\\game\\\\GameCanvas.tsx\" -Value $content -NoNewline)"
     ]
   }
 }
