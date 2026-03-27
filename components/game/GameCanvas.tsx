@@ -22,9 +22,13 @@ import {
   ABOUT_SECTION_COUNT,
   RETURN_SECTION,
 } from "./AboutRoom";
-import { getWorkTriggers, type WorkTrigger } from "./WorkRoom";
+import { getWorkTriggers, drawSkillBar, type WorkTrigger } from "./WorkRoom";
 import { getTimelineTriggers, type TimelineTrigger } from "./TimelineRoom";
-import { drawSpeechBubble, getLastBubbleBtnRects, type BubbleContent } from "./SpeechBubble";
+import {
+  drawSpeechBubble,
+  getLastBubbleBtnRects,
+  type BubbleContent,
+} from "./SpeechBubble";
 import {
   drawParallaxBackground,
   drawParallaxForeground,
@@ -47,7 +51,12 @@ import {
   getCharmAtPoint,
   getCharmId,
 } from "./CharmMenu";
-import { drawSocialHUD, getSocialHudHit, getSocialUrl, SOCIAL_COUNT } from "./SocialHUD";
+import {
+  drawSocialHUD,
+  getSocialHudHit,
+  getSocialUrl,
+  SOCIAL_COUNT,
+} from "./SocialHUD";
 
 const SPEED = 340; // px/s horizontal
 const GRAVITY = 1800; // px/s²
@@ -80,13 +89,16 @@ export function GameCanvas() {
     let mouseY = -9999;
     let hudHovered = -1; // index of hovered social icon, -1 = none
 
-    const hitRect = (r: {x:number;y:number;w:number;h:number}, x: number, y: number) =>
-      x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    const hitRect = (
+      r: { x: number; y: number; w: number; h: number },
+      x: number,
+      y: number,
+    ) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 
     const onMouseMove = (e: MouseEvent) => {
       const r = canvas.getBoundingClientRect();
-      mouseX = (e.clientX - r.left) * (canvas.width  / (r.width  || 1));
-      mouseY = (e.clientY - r.top)  * (canvas.height / (r.height || 1));
+      mouseX = (e.clientX - r.left) * (canvas.width / (r.width || 1));
+      mouseY = (e.clientY - r.top) * (canvas.height / (r.height || 1));
       if (charmOpen) {
         const hit = getCharmAtPoint(
           mouseX,
@@ -99,16 +111,21 @@ export function GameCanvas() {
       hudHovered = getSocialHudHit(mouseX, mouseY);
       const btnsHover = getLastBubbleBtnRects();
       const overBtn = btnsHover
-        ? hitRect(btnsHover.up, mouseX, mouseY) || hitRect(btnsHover.down, mouseX, mouseY)
+        ? hitRect(btnsHover.up, mouseX, mouseY) ||
+          hitRect(btnsHover.down, mouseX, mouseY)
         : false;
-      canvas.style.cursor = (hudHovered !== -1 || overBtn) ? "pointer" : "default";
+      canvas.style.cursor =
+        hudHovered !== -1 || overBtn ? "pointer" : "default";
     };
 
     const canvasCoords = (e: MouseEvent) => {
-      const r    = canvas.getBoundingClientRect();
-      const scaleX = canvas.width  / (r.width  || 1);
+      const r = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / (r.width || 1);
       const scaleY = canvas.height / (r.height || 1);
-      return { cx: (e.clientX - r.left) * scaleX, cy: (e.clientY - r.top) * scaleY };
+      return {
+        cx: (e.clientX - r.left) * scaleX,
+        cy: (e.clientY - r.top) * scaleY,
+      };
     };
 
     const onMouseClick = (e: MouseEvent) => {
@@ -199,8 +216,8 @@ export function GameCanvas() {
     let nameGlow = 0;
 
     // Speech bubble state
-    let bubbleProgress  = 0;
-    let bubblePage      = 0;
+    let bubbleProgress = 0;
+    let bubblePage = 0;
     let activeBubbleId: string | null = null;
     let bubbleContent: BubbleContent | null = null;
 
@@ -218,7 +235,7 @@ export function GameCanvas() {
     // Controls hint state
     let hintsVisible = true;
     let hintsOpacity = 0.72;
-    let hintsTimer = 0;       // seconds since first keypress
+    let hintsTimer = 0; // seconds since first keypress
     let hintsStarted = false; // true once first keypress registered
 
     // Keys
@@ -271,7 +288,8 @@ export function GameCanvas() {
           isGrounded
         ) {
           worldMode = "horizontal";
-          charX = SPAWN_ROOM * canvas.width + canvas.width * 0.14 - CHARACTER_W / 2;
+          charX =
+            SPAWN_ROOM * canvas.width + canvas.width * 0.14 - CHARACTER_W / 2;
           charY = groundY() - CHARACTER_H;
           velY = -JUMP_VEL * 0.45;
           isGrounded = false;
@@ -288,7 +306,6 @@ export function GameCanvas() {
     const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code);
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-
 
     const groundY = () => Math.round(canvas.height * GROUND_Y_FAC);
 
@@ -379,9 +396,10 @@ export function GameCanvas() {
         // Gap detection — void is the middle area (0.28..0.72); ground exists only at edges
         const spawnBase = SPAWN_ROOM * canvas.width;
         const localMidX = charX + CHARACTER_W / 2 - spawnBase;
-        const overGap = currentRoom === 1
-          && localMidX > canvas.width * 0.28
-          && localMidX < canvas.width * 0.72;
+        const overGap =
+          currentRoom === 1 &&
+          localMidX > canvas.width * 0.28 &&
+          localMidX < canvas.width * 0.72;
 
         if (!overGap && charY + CHARACTER_H >= ground) {
           charY = ground - CHARACTER_H;
@@ -616,18 +634,23 @@ export function GameCanvas() {
           drawParticles(ctx, particles, canvas.width, canvas.height, time);
         if (currentRoom === 1) {
           // Clip grass to the two ground sections — no grass over the void
-          ctx.save()
-          ctx.beginPath()
-          ctx.rect(0, 0, canvas.width * 0.28, canvas.height)
-          ctx.rect(canvas.width * 0.72, 0, canvas.width * 0.28, canvas.height)
-          ctx.clip()
-          drawParallaxForeground(ctx, canvas.width, ground, time, grassImgs)
-          ctx.restore()
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(0, 0, canvas.width * 0.28, canvas.height);
+          ctx.rect(canvas.width * 0.72, 0, canvas.width * 0.28, canvas.height);
+          ctx.clip();
+          drawParallaxForeground(ctx, canvas.width, ground, time, grassImgs);
+          ctx.restore();
         } else {
-          drawParallaxForeground(ctx, canvas.width, ground, time, grassImgs)
+          drawParallaxForeground(ctx, canvas.width, ground, time, grassImgs);
         }
         if (currentRoom === 1)
-          drawSpawnBench(ctx, canvas.width, ground - ISLAND_Y, spawnAssets.benchImg);
+          drawSpawnBench(
+            ctx,
+            canvas.width,
+            ground - ISLAND_Y,
+            spawnAssets.benchImg,
+          );
         drawCharacter(
           ctx,
           screenX,
@@ -673,8 +696,13 @@ export function GameCanvas() {
         );
       }
 
+      // Skill bar — work world only, fades when dialogue opens
+      if (currentRoom === 0) {
+        drawSkillBar(ctx, canvas.width, canvas.height, bubbleProgress);
+      }
+
       // Social HUD — always on top, fixed screen-space, no world offset
-      drawSocialHUD(ctx, mouseX, mouseY);
+      drawSocialHUD(ctx, mouseX, mouseY, currentRoom);
 
       // Controls hint — screen-space, fades out 8s after first keypress
       if (hintsVisible) {
@@ -686,16 +714,20 @@ export function GameCanvas() {
           }
         }
         if (hintsVisible) {
-          const cx  = canvas.width / 2;
+          const cx = canvas.width / 2;
           const r1y = canvas.height - 32 - 24;
           const r2y = canvas.height - 32;
-          ctx.font      = `400 15px 'Perpetua', serif`;
+          ctx.font = `400 15px 'Perpetua', serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "bottom";
           ctx.fillStyle = `rgba(140,200,180,${hintsOpacity})`;
-          ctx.fillText("← → to move     ↑ / Space to jump     double jump supported", cx, r1y);
+          ctx.fillText(
+            "← → to move     ↑ / Space to jump     double jump supported",
+            cx,
+            r1y,
+          );
           ctx.fillText("Tab  to open charm menu", cx, r2y);
-          ctx.textAlign    = "left";
+          ctx.textAlign = "left";
           ctx.textBaseline = "alphabetic";
         }
       }
@@ -793,11 +825,17 @@ export function GameCanvas() {
         ["/sprites/social_whatsapp.png", () => {}],
         ["/sprites/social_discord.webp", () => {}],
         // Work world logos
-        ['/sprites/work/merkle.webp',       () => {}],
-        ['/sprites/work/Tech_Mahindra.png', () => {}],
-        ['/sprites/work/pwc.png',           () => {}],
-        ['/sprites/work/Infosys.webp',      () => {}],
-        ['/sprites/work/elev_lift.png',     () => {}],
+        ["/sprites/work/merkle.webp", () => {}],
+        ["/sprites/work/Tech_Mahindra.png", () => {}],
+        ["/sprites/work/pwc.png", () => {}],
+        ["/sprites/work/Infosys.webp", () => {}],
+        ["/sprites/work/elev_lift.png", () => {}],
+        // Skill bar icons
+        ["/sprites/skills/JavaScript.png", () => {}],
+        ["/sprites/skills/Typescript.png", () => {}],
+        ["/sprites/skills/React.png", () => {}],
+        ["/sprites/skills/Next.png", () => {}],
+        ["/sprites/skills/nodejs.jpg", () => {}],
       ];
 
       await Promise.all([

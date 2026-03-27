@@ -32,6 +32,17 @@ const ICON_SRCS: readonly string[] = [
 // Resume button is index SOCIAL_COUNT in hit-test results
 export const SOCIAL_COUNT = ICON_SRCS.length; // 7 — resume hit returns this index
 
+function getExperience(): string {
+  const start = new Date(2020, 10, 1) // November 2020
+  const now = new Date()
+  const totalMonths =
+    (now.getFullYear() - start.getFullYear()) * 12 +
+    (now.getMonth() - start.getMonth())
+  const y = Math.floor(totalMonths / 12)
+  const m = totalMonths % 12
+  return `${y}y ${m}m`
+}
+
 interface HudLayout {
   frameX: number;
   frameY: number;
@@ -133,9 +144,10 @@ export function getSocialUrl(index: number): string {
 // ── Public: draw ──────────────────────────────────────────────────────────────
 
 export function drawSocialHUD(
-  ctx: CanvasRenderingContext2D,
-  mouseX: number,
-  mouseY: number,
+  ctx:         CanvasRenderingContext2D,
+  mouseX:      number,
+  mouseY:      number,
+  currentRoom: number = -1,
 ): void {
   const { frameX, frameY, frameW, frameH, icons, resumeCx, resumeCy } =
     getLayout();
@@ -208,4 +220,19 @@ export function drawSocialHUD(
 
   // Document icon drawn in canvas
   drawDocumentIcon(ctx, resumeCx, resumeCy, resumeHovered);
+
+  // ── Experience badge — work world only, display-only ─────────────────────
+  if (currentRoom === 0) {
+    const expX = resumeCx + R + 28
+    const expY = resumeCy
+    ctx.font         = `700 13px 'Trajan Pro', serif`
+    ctx.fillStyle    = 'rgba(220,190,100,0.90)'
+    ctx.textAlign    = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(getExperience(), expX, expY - 5)
+    ctx.font         = `400 10px 'Perpetua', serif`
+    ctx.fillStyle    = 'rgba(160,200,170,0.60)'
+    ctx.fillText('experience', expX, expY + 8)
+    ctx.textBaseline = 'alphabetic'
+  }
 }
