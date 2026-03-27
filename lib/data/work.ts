@@ -4,13 +4,13 @@ export const workExperience: WorkExperience[] = [
   {
     id: 'merkle-dentsu',
     company: 'Merkle',
-    companyDescription: 'Dentsu Group — global digital experience agency',
+    companyDescription: 'Merkle, a Dentsu Company',
     role: 'Senior Software Engineer',
     period: 'April 2025 – Present',
     location: 'Remote',
     current: true,
     bullets: [
-      'Rebuilding the web platform for Leading Hotels of the World (LHW) from the ground up — new codebase, fresh UX, expanded feature set. Sole engineer responsible for the full technical stack while other engineers focused on single domains.',
+      'Rebuilding the web platform for a an elite hospitality alliance, from the ground up — new codebase, fresh UX, expanded feature set. Sole engineer responsible for the full technical stack while other engineers focused on single domains.',
       'Architected the frontend in Next.js and TypeScript on a Contentful CMS — multilingual support, component architecture, and automated content authoring workflows.',
       'Integrated a multi-system backend across AWS AppSync, a property management system (PMS), and SynXis for real-time pricing and availability data.',
       'Designed Cloudinary-based Digital Asset Management workflows with Contentful content delivery, deployed on Vercel.',
@@ -21,7 +21,7 @@ export const workExperience: WorkExperience[] = [
   {
     id: 'tech-mahindra-microsoft',
     company: 'Tech Mahindra',
-    companyDescription: 'Microsoft — Bing Ads platform',
+    companyDescription: 'Tech Mahindra. Project: Microsoft — Bing Ads platform',
     role: 'Senior Software Engineer',
     period: 'September 2023 – March 2025',
     location: 'Remote',
@@ -40,12 +40,13 @@ export const workExperience: WorkExperience[] = [
     period: 'September 2021 – September 2023',
     location: 'Remote',
     bullets: [
-      'Led frontend development across D2C, B2C, and B2B e-commerce platforms for a major Indian retail conglomerate, and a suite of government digitization projects.',
+      'Led frontend development across D2C, B2C, and B2B e-commerce platforms for The DS Group (Dharampal Satyapal Group), a major Indian FMCG conglomerate.',
       'Led a team delivering Next.js storefronts with device-specific experiences across web and mobile.',
       'Built and shipped cross-platform iOS and Android apps using React Native.',
       'Designed an optimistic update strategy for cart interactions, eliminating concurrency bugs and enabling real-time cross-device sync.',
       'Engineered a custom NextAuth.js integration to meet enterprise authentication requirements.',
       'Mentored four junior engineers and served as primary technical liaison with senior stakeholders.',
+      'A series of portals for North Eastern Regional Power Committee - NERPC, with the objective to digitize energy transactions, auditing, billing, and scheduling. (SAMAST)'
     ],
   },
   {
@@ -65,13 +66,6 @@ export const consultingEngagements: ConsultingEngagement[] = []
 
 export const projects: Project[] = [
   {
-    id: 'moebius',
-    name: 'Moebius',
-    description: 'AI-powered project historian for codebases. An MCP server + VS Code extension that generates versioned, queryable documentation by observing file changes and AI chat sessions in real time. Captures not just what changed but why — using the prompts developers already write. Built on MCP protocol before it was widely adopted.',
-    githubUrl: 'https://github.com/Manku27',
-    tech: ['Node.js', 'MCP', 'VS Code Extension API', 'TypeScript'],
-  },
-  {
     id: 'pk-chai',
     name: 'PK Chai',
     description: 'Ordering system for a Kolkata eatery handling midnight delivery across 4 college hostels. Mobile-first admin panel with 30-minute slot batching and hostel-block grouping. Real users, real revenue.',
@@ -85,14 +79,7 @@ export const projects: Project[] = [
     url: 'https://vishuddha-comics.vercel.app/',
     tech: ['Next.js', 'Neon', 'Cloudinary'],
   },
-  {
-    id: 'eslint-plugin-redux-tsc',
-    name: 'eslint-plugin-redux-tsc',
-    description: 'Enforces typed Redux hooks for IntelliSense and type safety across a codebase.',
-    url: 'https://www.npmjs.com/package/eslint-plugin-redux-tsc',
-    tech: ['ESLint', 'TypeScript', 'Node.js'],
-    highlights: ['250+ downloads'],
-  },
+  
   {
     id: 'eslint-plugin-contentful-migrations',
     name: 'eslint-plugin-contentful-migrations',
@@ -115,6 +102,21 @@ export const projects: Project[] = [
     githubUrl: 'https://github.com/Manku27/sheets-gemini-js-poc',
     tech: ['Gemini API', 'Google Sheets API', 'WhatsApp Business API', 'Node.js'],
   },
+  {
+    id: 'eslint-plugin-redux-tsc',
+    name: 'eslint-plugin-redux-tsc',
+    description: 'Enforces typed Redux hooks for IntelliSense and type safety across a codebase.',
+    url: 'https://www.npmjs.com/package/eslint-plugin-redux-tsc',
+    tech: ['ESLint', 'TypeScript', 'Node.js'],
+    highlights: ['250+ downloads'],
+  },
+    {
+    id: 'moebius',
+    name: 'Moebius',
+    description: 'AI-powered project historian for codebases. An MCP server + VS Code extension that generates versioned, queryable documentation by observing file changes and AI chat sessions in real time. Captures not just what changed but why — using the prompts developers already write. Built on MCP protocol before it was widely adopted.',
+    githubUrl: 'https://github.com/Manku27',
+    tech: ['Node.js', 'MCP', 'VS Code Extension API', 'TypeScript'],
+  },
 ]
 
 export const certifications: Certification[] = [
@@ -126,7 +128,8 @@ export const certifications: Certification[] = [
 export const awards: Award[] = [
   { id: 'pwc-aab', name: 'Above and Beyond', issuer: 'PwC India' },
   { id: 'pwc-spot', name: 'Spot Award', issuer: 'PwC India' },
-  { id: 'tm-aab', name: 'Above and Beyond', issuer: 'Tech Mahindra' },
+  { id: 'pwc-aab-team', name: 'Above and Beyond (Team)', issuer: 'PwC India' },
+  { id: 'pwc-pat', name: 'Pat on the back', issuer: 'PwC India' },
 ]
 
 export const education: Education[] = [

@@ -835,7 +835,9 @@ export function GameCanvas() {
         ["/sprites/skills/Typescript.png", () => {}],
         ["/sprites/skills/React.png", () => {}],
         ["/sprites/skills/Next.png", () => {}],
-        ["/sprites/skills/nodejs.jpg", () => {}],
+        ["/sprites/skills/nodejs.jpg",        () => {}],
+        ["/sprites/skills/contentful.png",    () => {}],
+        ["/sprites/skills/cloudinary.png",    () => {}],
       ];
 
       await Promise.all([

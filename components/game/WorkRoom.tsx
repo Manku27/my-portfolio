@@ -6,6 +6,7 @@ import {
   workExperience,
   consultingEngagements,
   projects,
+  awards,
 } from "@/lib/data/index";
 import { getImage } from "@/utils/loadAssets";
 import type { WorkExperience } from "@/lib/types";
@@ -291,13 +292,21 @@ export function getWorkTriggers(
 ): WorkTrigger[] {
   const islandTopY = groundY - ISLAND_OFFSET;
 
-  const triggers: WorkTrigger[] = COMPANIES.map((company, i) => ({
-    id: company.id,
-    worldX: canvasW * COMPANY_X[i],
-    roofY: islandTopY - (company.current ? BOX_H_CUR : BOX_H_DEF),
-    radius: 80,
-    content: workToBubble(company),
-  }));
+  const triggers: WorkTrigger[] = COMPANIES.map((company, i) => {
+    const content = workToBubble(company)
+    const companyAwards = awards.filter(a => a.issuer === company.company)
+    if (companyAwards.length > 0) {
+      content.bullets.push('---')
+      content.bullets.push(...companyAwards.map(a => `Award: ${a.name}`))
+    }
+    return {
+      id:      company.id,
+      worldX:  canvasW * COMPANY_X[i],
+      roofY:   islandTopY - (company.current ? BOX_H_CUR : BOX_H_DEF),
+      radius:  80,
+      content,
+    }
+  });
 
   const pavilionH = Math.round(canvasW * 0.18);
   triggers.push({
@@ -337,6 +346,8 @@ const SKILL_SRCS = [
   "/sprites/skills/React.png",
   "/sprites/skills/Next.png",
   "/sprites/skills/nodejs.jpg",
+  "/sprites/skills/contentful.png",
+  "/sprites/skills/cloudinary.png",
 ];
 
 export function drawSkillBar(

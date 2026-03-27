@@ -30,7 +30,7 @@ export function workToBubble(w: WorkExperience): BubbleContent {
     role: w.role,
     meta: `${w.period}  ·  ${w.location}`,
     description: w.companyDescription,
-    bullets: w.bullets,
+    bullets: [...w.bullets],
   };
 }
 
@@ -215,6 +215,10 @@ export function drawSpeechBubble(
     const bulletFont = `400 ${bulletFs}px 'Perpetua', serif`;
     ctx.font = bulletFont;
     content.bullets.forEach((b) => {
+      if (b === '---') {
+        bodyLines.push({ text: '', font: '', color: '', indent: 0, lineH: metaFs * 1.2, isDivider: true })
+        return
+      }
       const wrapped = wrapText(ctx, `· ${b}`, innerW - 8);
       wrapped.forEach((l, li) =>
         bodyLines.push({
