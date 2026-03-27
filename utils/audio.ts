@@ -2,7 +2,7 @@
 // Browser autoplay policy requires a user gesture before audio can play.
 
 const TRACK_SRC = "/audio/HKnight-Greenpath.mp3";
-const TARGET_VOLUME = 0.35;
+const TARGET_VOLUME = 0.25;
 const FADE_DURATION_MS = 2000;
 
 export function initAudio(): () => void {
