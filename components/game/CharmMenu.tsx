@@ -1,15 +1,13 @@
 // Charm inventory overlay — Hollow Knight-style navigation screen.
 // Drawn directly on the game canvas (not DOM). Press Tab to open/close.
 
-const CHARMS: Array<{ id: string; label: string; color: string }> = [
-  { id: 'home',     label: 'Home',     color: '#d0e8e0' },
-  { id: 'work',     label: 'Work',     color: '#c89030' },
-  { id: 'timeline', label: 'Timeline', color: '#30c8a0' },
-  { id: 'about',    label: 'About',    color: '#80c0e0' },
-  { id: 'books',    label: 'Books',    color: '#9060e0' },
-  { id: 'movies',   label: 'Movies',   color: '#e06030' },
-  { id: 'writing',  label: 'Writing',  color: '#40b8df' },
-  { id: 'games',    label: 'Games',    color: '#50d080' },
+import { getImage } from '@/utils/loadAssets'
+
+const CHARMS: Array<{ id: string; label: string; color: string; img: string }> = [
+  { id: 'home',     label: 'Home',     color: '#d0e8e0', img: '/sprites/charms/Home_charm.png'       },
+  { id: 'work',     label: 'Work',     color: '#c89030', img: '/sprites/charms/Work_charm.png'       },
+  { id: 'timeline', label: 'Timeline', color: '#30c8a0', img: '/sprites/charms/Timeline__charm.png'  },
+  { id: 'about',    label: 'About',    color: '#80c0e0', img: '/sprites/charms/About_charm.png'      },
 ]
 
 export const CHARM_COUNT = CHARMS.length
@@ -39,7 +37,7 @@ export function getCharmId(i: number): string {
   return CHARMS[i]?.id ?? ''
 }
 
-const COLS     = 3
+const COLS     = 2
 const SLOT_R   = 34   // orb radius px
 const SLOT_STEP = 100 // center-to-center distance
 
@@ -149,18 +147,29 @@ export function drawCharmMenu(
     ctx.arc(ox, oy, SLOT_R + 7, 0, Math.PI * 2)
     ctx.stroke()
 
-    // Orb body — radial gradient from colour to dark
-    const orb = ctx.createRadialGradient(
-      ox - SLOT_R * 0.28, oy - SLOT_R * 0.28, 0,
-      ox, oy, SLOT_R,
-    )
-    orb.addColorStop(0, hexA(charm.color, active ? 1.0 : 0.75))
-    orb.addColorStop(0.55, hexA(charm.color, active ? 0.65 : 0.45))
-    orb.addColorStop(1, 'rgba(8,20,16,0.95)')
-    ctx.fillStyle = orb
+    // Orb body — image if loaded, else gradient fallback
+    ctx.save()
     ctx.beginPath()
     ctx.arc(ox, oy, SLOT_R, 0, Math.PI * 2)
-    ctx.fill()
+    ctx.clip()
+
+    const charmImg = getImage(charm.img)
+    if (charmImg) {
+      ctx.globalAlpha = active ? 1.0 : 0.72
+      ctx.drawImage(charmImg, ox - SLOT_R, oy - SLOT_R, SLOT_R * 2, SLOT_R * 2)
+      ctx.globalAlpha = progress
+    } else {
+      const orb = ctx.createRadialGradient(
+        ox - SLOT_R * 0.28, oy - SLOT_R * 0.28, 0,
+        ox, oy, SLOT_R,
+      )
+      orb.addColorStop(0, hexA(charm.color, active ? 1.0 : 0.75))
+      orb.addColorStop(0.55, hexA(charm.color, active ? 0.65 : 0.45))
+      orb.addColorStop(1, 'rgba(8,20,16,0.95)')
+      ctx.fillStyle = orb
+      ctx.fillRect(ox - SLOT_R, oy - SLOT_R, SLOT_R * 2, SLOT_R * 2)
+    }
+    ctx.restore()
 
     // Specular highlight — small bright spot
     const spec = ctx.createRadialGradient(

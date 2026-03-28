@@ -834,6 +834,11 @@ export function GameCanvas() {
         ["/sprites/work/pwc.png", () => {}],
         ["/sprites/work/Infosys.webp", () => {}],
         ["/sprites/work/elev_lift.png", () => {}],
+        // Charm menu icons
+        ['/sprites/charms/Home_charm.png',      () => {}],
+        ['/sprites/charms/Work_charm.png',      () => {}],
+        ['/sprites/charms/Timeline__charm.png', () => {}],
+        ['/sprites/charms/About_charm.png',     () => {}],
         // Skill bar icons
         ["/sprites/skills/JavaScript.png", () => {}],
         ["/sprites/skills/Typescript.png", () => {}],
