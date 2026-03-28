@@ -14,7 +14,8 @@
       "mcp__plugin_playwright_playwright__browser_console_messages",
       "mcp__plugin_playwright_playwright__browser_press_key",
       "Bash($content = Get-Content \"C:\\\\code\\\\mayank-portfolio\\\\components\\\\game\\\\GameCanvas.tsx\" -Raw)",
-      "Bash(Set-Content \"C:\\\\code\\\\mayank-portfolio\\\\components\\\\game\\\\GameCanvas.tsx\" -Value $content -NoNewline)"
+      "Bash(Set-Content \"C:\\\\code\\\\mayank-portfolio\\\\components\\\\game\\\\GameCanvas.tsx\" -Value $content -NoNewline)",
+      "Bash(npm run:*)"
     ]
   }
 }

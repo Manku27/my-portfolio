@@ -6,6 +6,42 @@
 import { timelineEntries } from '@/lib/data/index'
 import { timelineToBubble, type BubbleContent } from './SpeechBubble'
 import type { TimelineEntry } from '@/lib/types'
+import { getImage } from '@/utils/loadAssets'
+
+// ─── Pole sprites ─────────────────────────────────────────────────────────────
+
+export const POLE_SRCS = [
+  '/sprites/poles/pole_02.png',
+  '/sprites/poles/pole_03.png',
+  '/sprites/poles/pole_04.png',
+  '/sprites/poles/pole_04_FG.png',
+  '/sprites/poles/pole_05.png',
+  '/sprites/poles/pole_08.png',
+]
+
+// Fixed display width for all pole sprites — keeps visuals uniform regardless of source dimensions
+const POLE_DISPLAY_W = 64
+
+/** Draw a pole sprite (or fallback rect) from groundY up by poleH px, centred on x. */
+function drawPoleSprite(
+  ctx:       CanvasRenderingContext2D,
+  poleIndex: number,
+  x:         number,
+  groundY:   number,
+  poleH:     number,
+  fallbackColor: string,
+  scale:     number,
+): void {
+  const displayW = POLE_DISPLAY_W * scale
+  const src = POLE_SRCS[poleIndex % POLE_SRCS.length]
+  const img = getImage(src)
+  if (img && img.naturalHeight > 0) {
+    ctx.drawImage(img, x - displayW / 2, groundY - poleH, displayW, poleH)
+  } else {
+    ctx.fillStyle = fallbackColor
+    ctx.fillRect(x - displayW / 2, groundY - poleH, displayW, poleH)
+  }
+}
 
 // ─── Entry sorting and room split ─────────────────────────────────────────────
 
@@ -13,24 +49,32 @@ const ALL_ENTRIES: TimelineEntry[] = [...timelineEntries].sort((a, b) =>
   b.date.localeCompare(a.date)
 )
 
-// 8 most recent → room 2 (closer to spawn), remaining → room 3
-const ROOM2_ENTRIES = ALL_ENTRIES.slice(0, 8)
-const ROOM3_ENTRIES = ALL_ENTRIES.slice(8)
+// Entries per room — increase this number if entries start overlapping as content grows
+const ENTRIES_PER_ROOM = 4
 
-// Even horizontal spacing within a room (8% margin each side)
-function evenSpacing(count: number): number[] {
-  if (count === 1) return [0.5]
-  return Array.from({ length: count }, (_, i) => 0.08 + i * (0.84 / (count - 1)))
+// Dynamically chunk entries into rooms — adding data automatically expands the world
+const ROOM_CHUNKS: TimelineEntry[][] = []
+for (let i = 0; i < ALL_ENTRIES.length; i += ENTRIES_PER_ROOM) {
+  ROOM_CHUNKS.push(ALL_ENTRIES.slice(i, i + ENTRIES_PER_ROOM))
 }
 
-const ROOM2_X = evenSpacing(ROOM2_ENTRIES.length)
-const ROOM3_X = evenSpacing(ROOM3_ENTRIES.length)
+/** Number of timeline rooms needed — consumed by GameCanvas to compute total world width. */
+export const TIMELINE_ROOM_COUNT = ROOM_CHUNKS.length
+
+// Even horizontal spacing within a room (10% margin each side)
+function evenSpacing(count: number): number[] {
+  if (count === 1) return [0.5]
+  return Array.from({ length: count }, (_, i) => 0.10 + i * (0.80 / (count - 1)))
+}
+
+const ROOM_X_FRACS = ROOM_CHUNKS.map(chunk => evenSpacing(chunk.length))
 
 // ─── Visual constants ─────────────────────────────────────────────────────────
 
-const MILESTONE_H = 175
-const RICH_H      = 125
-const SHORT_H     = 88
+const POLE_RENDER_H = 260   // all pole sprites drawn at this fixed height
+const MILESTONE_H   = 185   // element height used for trigger radius only
+const RICH_H        = 145
+const SHORT_H       = 130
 
 // Category accent colours
 const CAT_COLOR: Record<string, [number, number, number]> = {
@@ -61,40 +105,40 @@ function labelDate(date: string): string {
 }
 
 function drawMilestone(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  groundY: number,
-  entry: TimelineEntry
+  ctx:       CanvasRenderingContext2D,
+  x:         number,
+  groundY:   number,
+  entry:     TimelineEntry,
+  poleIndex: number,
+  scale:     number,
 ): void {
-  const pillarH = MILESTONE_H
-  const pillarW = 12
-  const capW    = 28
-  const gemR    = 7
-  const pillarY = groundY - pillarH
-  const capY    = pillarY - 4
+  const poleH    = POLE_RENDER_H * scale
+  const capW     = 32 * scale
+  const gemR     = 9  * scale
+  const poleTopY = groundY - poleH
+  const capY     = poleTopY - 4 * scale
 
   // Ambient glow halo
-  const halo = ctx.createRadialGradient(x, capY, 0, x, capY, 90)
-  halo.addColorStop(0, catRgb(entry.category, 0.16))
+  const haloR = 110 * scale
+  const halo = ctx.createRadialGradient(x, capY, 0, x, capY, haloR)
+  halo.addColorStop(0, catRgb(entry.category, 0.18))
   halo.addColorStop(1, catRgb(entry.category, 0))
   ctx.fillStyle = halo
-  ctx.beginPath(); ctx.arc(x, capY, 90, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.arc(x, capY, haloR, 0, Math.PI * 2); ctx.fill()
 
-  // Pillar body — subtle gradient for depth
-  const pg = ctx.createLinearGradient(x - pillarW / 2, 0, x + pillarW / 2, 0)
-  pg.addColorStop(0, '#1a2818'); pg.addColorStop(0.5, '#2e4228'); pg.addColorStop(1, '#1a2818')
-  ctx.fillStyle = pg
-  ctx.fillRect(x - pillarW / 2, pillarY, pillarW, pillarH)
+  // Pillar body — pole sprite
+  drawPoleSprite(ctx, poleIndex, x, groundY, poleH, '#2e4228', scale)
 
   // Cap bar
-  const capG = ctx.createLinearGradient(0, capY - 4, 0, capY)
+  const capBarH = 5 * scale
+  const capG = ctx.createLinearGradient(0, capY - capBarH, 0, capY)
   capG.addColorStop(0, catRgb(entry.category, 0.95))
   capG.addColorStop(1, catRgb(entry.category, 0.5))
   ctx.fillStyle = capG
-  ctx.fillRect(x - capW / 2, capY - 4, capW, 4)
+  ctx.fillRect(x - capW / 2, capY - capBarH, capW, capBarH)
 
   // Gem / crystal on top
-  const gemY = capY - 4 - gemR - 2
+  const gemY = capY - capBarH - gemR - 2 * scale
   const gemG = ctx.createRadialGradient(x, gemY, 0, x, gemY, gemR * 1.6)
   gemG.addColorStop(0,   catRgb(entry.category, 0.95))
   gemG.addColorStop(0.5, catRgb(entry.category, 0.55))
@@ -104,22 +148,22 @@ function drawMilestone(
   ctx.fillStyle = catRgb(entry.category, 0.9)
   ctx.beginPath(); ctx.arc(x, gemY, gemR, 0, Math.PI * 2); ctx.fill()
 
-  // Date — small Perpetua above gem
-  const dateY  = gemY - gemR - 6
-  const titleY = dateY - 14
+  // Date — Perpetua above gem
+  const dateSize  = Math.round(22 * scale)
+  const titleSize = Math.round(28 * scale)
+  const dateY     = gemY - gemR - 8 * scale
+  const titleY    = dateY - dateSize * 1.1
   ctx.textAlign    = 'center'
   ctx.textBaseline = 'bottom'
-  ctx.font      = `400 11px 'Perpetua', serif`
-  ctx.fillStyle = catRgb(entry.category, 0.60)
+  ctx.font      = `400 ${dateSize}px 'Perpetua', serif`
+  ctx.fillStyle = catRgb(entry.category, 0.70)
   ctx.fillText(labelDate(entry.date), x, dateY)
 
   // Title — Trajan Pro, brighter
-  ctx.font      = `700 13px 'Trajan Pro', serif`
+  ctx.font      = `700 ${titleSize}px 'Trajan Pro', serif`
   ctx.fillStyle = 'rgba(235,220,165,0.95)'
-  // Split title across max two lines manually at ~200px
-  const maxW = 200
+  const maxW    = 340 * scale
   ctx.save()
-  // Measure and wrap title naively at spaces
   const words = entry.title.split(' ')
   const titleLines: string[] = []
   let cur = ''
@@ -130,8 +174,8 @@ function drawMilestone(
     } else { cur = test }
   }
   if (cur) titleLines.push(cur)
-  const titleLineH = 16
-  titleLines.slice(0, 2).reverse().forEach((line, i) => {
+  const titleLineH = titleSize * 1.2
+  titleLines.slice(0, 3).reverse().forEach((line, i) => {
     ctx.fillText(line, x, titleY - i * titleLineH)
   })
   ctx.restore()
@@ -141,28 +185,28 @@ function drawMilestone(
 }
 
 function drawRichEntry(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  groundY: number,
-  entry: TimelineEntry
+  ctx:       CanvasRenderingContext2D,
+  x:         number,
+  groundY:   number,
+  entry:     TimelineEntry,
+  poleIndex: number,
+  scale:     number,
 ): void {
-  const baseH  = 55
-  const frameW = 80
-  const frameH = 58
-  const baseW  = 10
-  const baseY  = groundY - baseH
-  const frameY = baseY - frameH
+  const poleH  = POLE_RENDER_H * scale
+  const frameW = 160 * scale
+  const frameH = 96  * scale
+  const frameY = groundY - poleH - frameH
 
   // Soft ambient glow
-  const halo = ctx.createRadialGradient(x, frameY + frameH / 2, 0, x, frameY + frameH / 2, 65)
-  halo.addColorStop(0, catRgb(entry.category, 0.12))
+  const haloR = 80 * scale
+  const halo = ctx.createRadialGradient(x, frameY + frameH / 2, 0, x, frameY + frameH / 2, haloR)
+  halo.addColorStop(0, catRgb(entry.category, 0.14))
   halo.addColorStop(1, catRgb(entry.category, 0))
   ctx.fillStyle = halo
-  ctx.beginPath(); ctx.arc(x, frameY + frameH / 2, 65, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.arc(x, frameY + frameH / 2, haloR, 0, Math.PI * 2); ctx.fill()
 
-  // Base pillar
-  ctx.fillStyle = '#1e3030'
-  ctx.fillRect(x - baseW / 2, baseY, baseW, baseH)
+  // Base pillar — pole sprite
+  drawPoleSprite(ctx, poleIndex, x, groundY, poleH, '#1e3030', scale)
 
   // Display frame background
   ctx.fillStyle = '#060f10'
@@ -172,41 +216,44 @@ function drawRichEntry(
   ctx.rect(x - frameW / 2, frameY, frameW, frameH)
   ctx.fill(); ctx.stroke()
 
-  // Inner frame glow (subtle gradient fill)
+  // Inner frame glow
   const fInner = ctx.createLinearGradient(0, frameY, 0, frameY + frameH)
   fInner.addColorStop(0, catRgb(entry.category, 0.07))
   fInner.addColorStop(1, catRgb(entry.category, 0.02))
   ctx.fillStyle = fInner
   ctx.fillRect(x - frameW / 2 + 2, frameY + 2, frameW - 4, frameH - 4)
 
+  const tagSize   = Math.round(19 * scale)
+  const titleSize = Math.round(25 * scale)
+
   // Category tag inside frame
-  ctx.font      = `700 9px 'Trajan Pro', serif`
-  ctx.fillStyle = catRgb(entry.category, 0.70)
+  ctx.font      = `700 ${tagSize}px 'Trajan Pro', serif`
+  ctx.fillStyle = catRgb(entry.category, 0.80)
   ctx.textAlign    = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(entry.category.toUpperCase(), x, frameY + frameH * 0.38)
+  ctx.fillText(entry.category.toUpperCase(), x, frameY + frameH * 0.36)
 
   // Date inside frame
-  ctx.font      = `400 9px 'Perpetua', serif`
-  ctx.fillStyle = catRgb(entry.category, 0.50)
-  ctx.fillText(labelDate(entry.date), x, frameY + frameH * 0.65)
+  ctx.font      = `400 ${tagSize}px 'Perpetua', serif`
+  ctx.fillStyle = catRgb(entry.category, 0.55)
+  ctx.fillText(labelDate(entry.date), x, frameY + frameH * 0.68)
 
   // Title above frame
-  ctx.font      = `700 12px 'Trajan Pro', serif`
-  ctx.fillStyle = 'rgba(200,230,215,0.90)'
+  ctx.font      = `700 ${titleSize}px 'Trajan Pro', serif`
+  ctx.fillStyle = 'rgba(200,230,215,0.92)'
   ctx.textBaseline = 'bottom'
   const words = entry.title.split(' ')
   const titleLines: string[] = []
   let cur = ''
   for (const w of words) {
     const test = cur ? `${cur} ${w}` : w
-    if (ctx.measureText(test).width > 180 && cur) { titleLines.push(cur); cur = w }
+    if (ctx.measureText(test).width > 320 * scale && cur) { titleLines.push(cur); cur = w }
     else { cur = test }
   }
   if (cur) titleLines.push(cur)
-  const titleLineH = 15
-  titleLines.slice(0, 2).reverse().forEach((line, i) => {
-    ctx.fillText(line, x, frameY - 4 - i * titleLineH)
+  const titleLineH = titleSize * 1.2
+  titleLines.slice(0, 3).reverse().forEach((line, i) => {
+    ctx.fillText(line, x, frameY - 6 * scale - i * titleLineH)
   })
 
   ctx.textAlign    = 'left'
@@ -214,47 +261,60 @@ function drawRichEntry(
 }
 
 function drawShortEntry(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  groundY: number,
-  entry: TimelineEntry
+  ctx:       CanvasRenderingContext2D,
+  x:         number,
+  groundY:   number,
+  entry:     TimelineEntry,
+  poleIndex: number,
+  scale:     number,
 ): void {
-  const postH = SHORT_H
-  const postW = 6
-  const capW  = 14
-  const postY = groundY - postH
+  const poleH = POLE_RENDER_H * scale
+  const capW  = 18 * scale
+  const postY = groundY - poleH
 
   // Subtle glow
-  const halo = ctx.createRadialGradient(x, postY, 0, x, postY, 40)
-  halo.addColorStop(0, catRgb(entry.category, 0.10))
+  const haloR = 55 * scale
+  const halo = ctx.createRadialGradient(x, postY, 0, x, postY, haloR)
+  halo.addColorStop(0, catRgb(entry.category, 0.12))
   halo.addColorStop(1, catRgb(entry.category, 0))
   ctx.fillStyle = halo
-  ctx.beginPath(); ctx.arc(x, postY, 40, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.arc(x, postY, haloR, 0, Math.PI * 2); ctx.fill()
 
-  // Post
-  ctx.fillStyle = '#1e3030'
-  ctx.fillRect(x - postW / 2, postY, postW, postH)
+  // Post — pole sprite
+  drawPoleSprite(ctx, poleIndex, x, groundY, poleH, '#1e3030', scale)
 
   // Cap
-  ctx.fillStyle = catRgb(entry.category, 0.80)
-  ctx.fillRect(x - capW / 2, postY - 3, capW, 3)
+  const capBarH = 4 * scale
+  ctx.fillStyle = catRgb(entry.category, 0.85)
+  ctx.fillRect(x - capW / 2, postY - capBarH, capW, capBarH)
+
+  const dateSize  = Math.round(21 * scale)
+  const titleSize = Math.round(24 * scale)
 
   // Date
-  ctx.font      = `400 10px 'Perpetua', serif`
-  ctx.fillStyle = catRgb(entry.category, 0.55)
+  ctx.font      = `400 ${dateSize}px 'Perpetua', serif`
+  ctx.fillStyle = catRgb(entry.category, 0.65)
   ctx.textAlign    = 'center'
   ctx.textBaseline = 'bottom'
-  ctx.fillText(labelDate(entry.date), x, postY - 6)
+  ctx.fillText(labelDate(entry.date), x, postY - 8 * scale)
 
-  // Title (one line, truncated)
-  ctx.font      = `700 11px 'Trajan Pro', serif`
-  ctx.fillStyle = 'rgba(190,225,205,0.85)'
-  const maxW   = 160
-  let title    = entry.title
-  while (ctx.measureText(title).width > maxW && title.length > 8) {
-    title = title.slice(0, -4) + '…'
+  // Title — word-wrapped up to 3 lines
+  ctx.font      = `700 ${titleSize}px 'Trajan Pro', serif`
+  ctx.fillStyle = 'rgba(190,225,205,0.90)'
+  const maxW    = 320 * scale
+  const words   = entry.title.split(' ')
+  const titleLines: string[] = []
+  let cur = ''
+  for (const w of words) {
+    const test = cur ? `${cur} ${w}` : w
+    if (ctx.measureText(test).width > maxW && cur) { titleLines.push(cur); cur = w }
+    else { cur = test }
   }
-  ctx.fillText(title, x, postY - 18)
+  if (cur) titleLines.push(cur)
+  const titleLineH = titleSize * 1.2
+  titleLines.slice(0, 3).reverse().forEach((line, i) => {
+    ctx.fillText(line, x, postY - 26 * scale - i * titleLineH)
+  })
 
   ctx.textAlign    = 'left'
   ctx.textBaseline = 'alphabetic'
@@ -268,14 +328,20 @@ export function drawTimelineRoom(
   canvasWidth: number,
   groundY:     number
 ): void {
-  const entries = roomIndex === 2 ? ROOM2_ENTRIES : ROOM3_ENTRIES
-  const xFracs  = roomIndex === 2 ? ROOM2_X       : ROOM3_X
+  // Scale everything relative to a 700px-tall canvas (groundY ≈ 616).
+  // Smaller screens shrink poles, fonts, and offsets proportionally.
+  const scale = Math.min(1, groundY / 616)
+
+  const chunkIndex = roomIndex - 2
+  const entries    = ROOM_CHUNKS[chunkIndex] ?? []
+  const xFracs     = ROOM_X_FRACS[chunkIndex] ?? []
 
   entries.forEach((entry, i) => {
-    const x = canvasWidth * xFracs[i]
-    if (entry.isMilestone)          drawMilestone(ctx, x, groundY, entry)
-    else if (entry.entryType === 'rich') drawRichEntry(ctx, x, groundY, entry)
-    else                            drawShortEntry(ctx, x, groundY, entry)
+    const x         = canvasWidth * xFracs[i]
+    const poleIndex = i % POLE_SRCS.length
+    if (entry.isMilestone)               drawMilestone(ctx, x, groundY, entry, poleIndex, scale)
+    else if (entry.entryType === 'rich') drawRichEntry(ctx, x, groundY, entry, poleIndex, scale)
+    else                                 drawShortEntry(ctx, x, groundY, entry, poleIndex, scale)
   })
 }
 
@@ -292,23 +358,16 @@ export interface TimelineTrigger {
 export function getTimelineTriggers(canvasW: number, groundY: number): TimelineTrigger[] {
   const triggers: TimelineTrigger[] = []
 
-  ROOM2_ENTRIES.forEach((entry, i) => {
-    triggers.push({
-      id:      entry.id,
-      worldX:  2 * canvasW + canvasW * ROOM2_X[i],
-      roofY:   groundY - entryHeight(entry),
-      radius:  70,
-      content: timelineToBubble(entry),
-    })
-  })
-
-  ROOM3_ENTRIES.forEach((entry, i) => {
-    triggers.push({
-      id:      entry.id,
-      worldX:  3 * canvasW + canvasW * ROOM3_X[i],
-      roofY:   groundY - entryHeight(entry),
-      radius:  70,
-      content: timelineToBubble(entry),
+  ROOM_CHUNKS.forEach((chunk, chunkIndex) => {
+    const roomNum = 2 + chunkIndex
+    chunk.forEach((entry, i) => {
+      triggers.push({
+        id:      entry.id,
+        worldX:  roomNum * canvasW + canvasW * ROOM_X_FRACS[chunkIndex][i],
+        roofY:   groundY - entryHeight(entry),
+        radius:  70,
+        content: timelineToBubble(entry),
+      })
     })
   })
 

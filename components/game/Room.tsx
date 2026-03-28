@@ -683,8 +683,8 @@ export function drawRoomEnvironment(
     drawWorkRoom(ctx, canvasWidth, groundY);
   }
 
-  // Timeline rooms — 2 and 3
-  if (roomIndex === 2 || roomIndex === 3) {
+  // Timeline rooms — 2, 3, 4
+  if (roomIndex >= 2) {
     drawTimelineRoom(ctx, roomIndex, canvasWidth, groundY);
   }
 }

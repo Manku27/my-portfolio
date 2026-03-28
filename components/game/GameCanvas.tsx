@@ -23,7 +23,12 @@ import {
   RETURN_SECTION,
 } from "./AboutRoom";
 import { getWorkTriggers, drawSkillBar, type WorkTrigger } from "./WorkRoom";
-import { getTimelineTriggers, type TimelineTrigger } from "./TimelineRoom";
+import {
+  getTimelineTriggers,
+  type TimelineTrigger,
+  POLE_SRCS,
+  TIMELINE_ROOM_COUNT,
+} from "./TimelineRoom";
 import {
   drawSpeechBubble,
   getLastBubbleBtnRects,
@@ -63,7 +68,7 @@ const GRAVITY = 1800; // px/s²
 const JUMP_VEL = 920; // px/s upward
 // Ground sits at 88% of canvas height — scales with screen size
 const GROUND_Y_FAC = 0.88;
-const ROOM_COUNT = 4; // 0=work, 1=spawn, 2=timeline, 3=timeline (older)
+const ROOM_COUNT = 2 + TIMELINE_ROOM_COUNT; // 0=work, 1=spawn, 2..N=timeline (auto-expands with data)
 const SPAWN_ROOM = 1;
 
 const LAMP_HOVER_RADIUS = 70; // px — distance at which lamp starts glowing
@@ -434,7 +439,12 @@ export function GameCanvas() {
         if (currentRoom === 1) {
           const dist = Math.hypot(
             mouseX - getLampX(canvas.width, canvas.height),
-            mouseY - lampBulbY(ground - getIslandY(canvas.height), canvas.width, canvas.height),
+            mouseY -
+              lampBulbY(
+                ground - getIslandY(canvas.height),
+                canvas.width,
+                canvas.height,
+              ),
           );
           lampGlow = lerp(
             lampGlow,
@@ -631,7 +641,15 @@ export function GameCanvas() {
             : undefined,
           currentRoom === 1 ? spawnAssets : undefined,
         );
-        drawBricks(ctx, bricks, cameraX, ground, canvas.width, platImg, canvas.height);
+        drawBricks(
+          ctx,
+          bricks,
+          cameraX,
+          ground,
+          canvas.width,
+          platImg,
+          canvas.height,
+        );
         if (currentRoom === 1)
           drawParticles(ctx, particles, canvas.width, canvas.height, time);
         if (currentRoom === 1) {
@@ -730,7 +748,7 @@ export function GameCanvas() {
             cx,
             r1y,
           );
-          ctx.fillText("Tab  to open charm menu", cx, r2y);
+          ctx.fillText("Tab  to open navigation", cx, r2y);
           ctx.textAlign = "left";
           ctx.textBaseline = "alphabetic";
         }
@@ -834,19 +852,21 @@ export function GameCanvas() {
         ["/sprites/work/pwc.png", () => {}],
         ["/sprites/work/Infosys.webp", () => {}],
         ["/sprites/work/elev_lift.png", () => {}],
+        // Timeline pole sprites
+        ...POLE_SRCS.map((src): [string, () => void] => [src, () => {}]),
         // Charm menu icons
-        ['/sprites/charms/Home_charm.png',      () => {}],
-        ['/sprites/charms/Work_charm.png',      () => {}],
-        ['/sprites/charms/Timeline__charm.png', () => {}],
-        ['/sprites/charms/About_charm.png',     () => {}],
+        ["/sprites/charms/Home_charm.png", () => {}],
+        ["/sprites/charms/Work_charm.png", () => {}],
+        ["/sprites/charms/Timeline__charm.png", () => {}],
+        ["/sprites/charms/About_charm.png", () => {}],
         // Skill bar icons
         ["/sprites/skills/JavaScript.png", () => {}],
         ["/sprites/skills/Typescript.png", () => {}],
         ["/sprites/skills/React.png", () => {}],
         ["/sprites/skills/Next.png", () => {}],
-        ["/sprites/skills/nodejs.jpg",        () => {}],
-        ["/sprites/skills/contentful.png",    () => {}],
-        ["/sprites/skills/cloudinary.png",    () => {}],
+        ["/sprites/skills/nodejs.jpg", () => {}],
+        ["/sprites/skills/contentful.png", () => {}],
+        ["/sprites/skills/cloudinary.png", () => {}],
       ];
 
       await Promise.all([
