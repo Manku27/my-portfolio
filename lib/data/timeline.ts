@@ -23,6 +23,8 @@ export const timelineEntries: TimelineEntry[] = [
     title: 'Down a Stable Diffusion rabbit hole',
     body: 'Spent the better part of a week throwing down with Stable Diffusion. ControlNet, LoRA fine-tuning, the works. Fascinating intersection of art and systems.',
     tags: ['AI', 'generative art', 'Stable Diffusion'],
+    imageUrls: ['/images/Stable-Diffusion.png'],
+    urls: ['https://medium.com/@jjmayank98/my-attempts-at-making-consistent-images-for-a-comic-book-with-ai-471a2a1402e1'],
   },
   {
     id: 'tl-billable-agents-workshop',
@@ -40,7 +42,7 @@ export const timelineEntries: TimelineEntry[] = [
     entryType: 'rich',
     title: 'Shipped Moebius — AI project historian for codebases',
     body: 'Built an MCP server + VS Code extension that captures the *why* behind code changes — not just what changed, but the reasoning. Uses the prompts developers already write. Built on MCP before it was widely adopted.',
-    url: 'https://github.com/Manku27',
+    urls: ['https://github.com/Manku27'],
     tags: ['MCP', 'VS Code', 'AI', 'developer tools', 'TypeScript'],
   },
   {
@@ -60,7 +62,7 @@ export const timelineEntries: TimelineEntry[] = [
     entryType: 'short',
     title: 'Published eslint-plugin-redux-tsc',
     body: 'Enforces typed Redux hooks across a codebase. Built it because I kept hitting the same untyped hook problem at work. 250+ downloads now.',
-    url: 'https://www.npmjs.com/package/eslint-plugin-redux-tsc',
+    urls: ['https://www.npmjs.com/package/eslint-plugin-redux-tsc'],
     tags: ['open source', 'ESLint', 'Redux', 'TypeScript'],
   },
   {
@@ -70,7 +72,7 @@ export const timelineEntries: TimelineEntry[] = [
     entryType: 'rich',
     title: 'Shipped PK Chai — ordering system for a Kolkata eatery',
     body: 'Midnight delivery to 4 college hostels. Real users, real orders. Mobile-first admin panel with 30-minute slot batching. Built it because the guy running the place had no system and I had a weekend.',
-    url: 'https://pk-chai.vercel.app/',
+    urls: ['https://pk-chai.vercel.app/'],
     tags: ['Next.js', 'real product', 'Kolkata', 'Neon'],
   },
   {
@@ -109,7 +111,7 @@ export const timelineEntries: TimelineEntry[] = [
     entryType: 'rich',
     title: 'Launched Vishuddha Comics',
     body: 'A free comics discovery platform. Not monetized. Not trying to be. Comics pulled me back when I had nothing — this is the platform I would have wanted to find. Built it because it needed to exist.',
-    url: 'https://vishuddha-comics.vercel.app/',
+    urls: ['https://vishuddha-comics.vercel.app/'],
     tags: ['comics', 'Next.js', 'personal', 'Neon', 'Cloudinary'],
   },
   {

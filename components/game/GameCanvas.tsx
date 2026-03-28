@@ -32,8 +32,12 @@ import {
 import {
   drawSpeechBubble,
   getLastBubbleBtnRects,
+  getLastBubbleLinkRect,
+  getLastBubbleMediaLinks,
+  getLastBubbleImageRects,
   type BubbleContent,
 } from "./SpeechBubble";
+import { drawImageViewer } from "./ImageViewer";
 import {
   drawParallaxBackground,
   drawParallaxForeground,
@@ -119,8 +123,14 @@ export function GameCanvas() {
         ? hitRect(btnsHover.up, mouseX, mouseY) ||
           hitRect(btnsHover.down, mouseX, mouseY)
         : false;
+      const linkRect      = getLastBubbleLinkRect();
+      const overLink      = linkRect ? hitRect(linkRect, mouseX, mouseY) : false;
+      const overMediaLink = getLastBubbleMediaLinks().some(({ rect }) => hitRect(rect, mouseX, mouseY));
+      const overImage     = getLastBubbleImageRects().some(({ rect }) => hitRect(rect, mouseX, mouseY));
       canvas.style.cursor =
-        hudHovered !== -1 || overBtn ? "pointer" : "default";
+        hudHovered !== -1 || overBtn || overLink || overMediaLink || overImage || viewerOpen()
+          ? "pointer"
+          : "default";
     };
 
     const canvasCoords = (e: MouseEvent) => {
@@ -134,11 +144,34 @@ export function GameCanvas() {
     };
 
     const onMouseClick = (e: MouseEvent) => {
-      // Dialogue pagination buttons — check before anything else
+      const { cx, cy } = canvasCoords(e);
+
+      // ── Full-screen viewer — close on X or any click ──────────────────────
+      if (viewerOpen()) {
+        viewerSrc = null;
+        viewerClose = null;
+        return;
+      }
+
+      // Dialogue pagination buttons + link button — check before anything else
       if (bubbleProgress > 0.5) {
+        // Inline media URL lines
+        for (const { rect, href } of getLastBubbleMediaLinks()) {
+          if (hitRect(rect, cx, cy)) {
+            window.open(href, "_blank", "noopener,noreferrer");
+            return;
+          }
+        }
+        // Inline image → open viewer
+        for (const { rect, src } of getLastBubbleImageRects()) {
+          if (hitRect(rect, cx, cy)) {
+            viewerSrc = src;
+            return;
+          }
+        }
+        const link = getLastBubbleLinkRect();
         const btns = getLastBubbleBtnRects();
         if (btns) {
-          const { cx, cy } = canvasCoords(e);
           if (hitRect(btns.up, cx, cy)) {
             bubblePage = Math.max(0, bubblePage - 1);
             return;
@@ -226,6 +259,11 @@ export function GameCanvas() {
     let activeBubbleId: string | null = null;
     let bubbleContent: BubbleContent | null = null;
 
+    // Full-screen image viewer state
+    let viewerSrc:   string | null = null;
+    let viewerClose: { x: number; y: number; w: number; h: number } | null = null;
+    const viewerOpen = () => viewerSrc !== null;
+
     // Vertical world (About Me) state
     let worldMode = "horizontal" as "horizontal" | "vertical";
     let charWorldY = 0; // world-space Y in vertical mode
@@ -252,6 +290,10 @@ export function GameCanvas() {
         charmOpen = !charmOpen;
         return;
       }
+      if (e.code === "Escape" && viewerOpen()) {
+        viewerSrc = null;
+        return;
+      }
       if (e.code === "Escape" && charmOpen) {
         charmOpen = false;
         return;
@@ -274,7 +316,10 @@ export function GameCanvas() {
       if (bubbleContent && bubbleProgress > 0.9) {
         if (e.code === "Enter") {
           e.preventDefault();
-          bubblePage += 1;
+          // Advance page
+          {
+            bubblePage += 1;
+          }
           return;
         }
         if (e.code === "Backspace") {
@@ -752,6 +797,12 @@ export function GameCanvas() {
           ctx.textAlign = "left";
           ctx.textBaseline = "alphabetic";
         }
+      }
+
+      // ── Full-screen image viewer — topmost layer ─────────────────────────────
+      if (viewerOpen()) {
+        const rects = drawImageViewer(ctx, canvas.width, canvas.height, viewerSrc!);
+        viewerClose = rects.close;
       }
 
       rafId = requestAnimationFrame(loop);

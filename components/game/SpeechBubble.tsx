@@ -4,7 +4,7 @@
 // Perpetua for body, Trajan Pro for title and role.
 
 import { wrapText } from "@/utils/wrapText";
-import { getImage } from "@/utils/loadAssets";
+import { getImage, loadImage } from "@/utils/loadAssets";
 import type {
   WorkExperience,
   ConsultingEngagement,
@@ -14,11 +14,19 @@ import type {
 
 // ─── Content type ─────────────────────────────────────────────────────────────
 
+export interface BubbleMediaItem {
+  type: 'image' | 'url'
+  src?: string    // image: path relative to public/ or any URL
+  href?: string   // url: destination
+  label?: string  // url: display text (falls back to href)
+}
+
 export interface BubbleContent {
   title: string;
   role?: string;
   meta?: string; // period · location
   description?: string;
+  media?: BubbleMediaItem[];  // images + links shown between description and bullets
   bullets: string[];
 }
 
@@ -52,12 +60,16 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 export function timelineToBubble(e: TimelineEntry): BubbleContent {
+  const media: BubbleMediaItem[] = []
+  for (const src  of e.imageUrls ?? []) media.push({ type: 'image', src  })
+  for (const href of e.urls      ?? []) media.push({ type: 'url',   href })
   return {
-    title: e.title,
-    role: CATEGORY_LABEL[e.category] ?? e.category,
-    meta: e.date.slice(0, 7).replace("-", " / "),
+    title:       e.title,
+    role:        CATEGORY_LABEL[e.category] ?? e.category,
+    meta:        e.date.slice(0, 7).replace('-', ' / '),
     description: e.body,
-    bullets: e.tags ?? [],
+    media:       media.length > 0 ? media : undefined,
+    bullets:     e.tags ?? [],
   };
 }
 
@@ -105,11 +117,26 @@ export interface BubbleBtnRects {
   down: BtnRect;
 }
 
-let _lastBtnRects: BubbleBtnRects | null = null;
+let _lastBtnRects:    BubbleBtnRects | null = null;
+let _lastLinkRect:   BtnRect | null = null;
+let _lastMediaLinks: Array<{ rect: BtnRect; href: string }> = [];
+let _lastImageRects: Array<{ rect: BtnRect; src:  string }> = [];
 
 /** Returns the last-drawn scroll button rects — call after drawSpeechBubble. */
 export function getLastBubbleBtnRects(): BubbleBtnRects | null {
   return _lastBtnRects;
+}
+/** Returns the last-drawn ↗ Open Link button rect — call after drawSpeechBubble. */
+export function getLastBubbleLinkRect(): BtnRect | null {
+  return _lastLinkRect;
+}
+/** Returns rects + hrefs for all inline media URL lines — call after drawSpeechBubble. */
+export function getLastBubbleMediaLinks(): Array<{ rect: BtnRect; href: string }> {
+  return _lastMediaLinks;
+}
+/** Returns rects + srcs for all inline media images — call after drawSpeechBubble. */
+export function getLastBubbleImageRects(): Array<{ rect: BtnRect; src: string }> {
+  return _lastImageRects;
 }
 
 // ─── Draw ─────────────────────────────────────────────────────────────────────
@@ -165,6 +192,11 @@ export function drawSpeechBubble(
     lineH: number;
     isDivider?: boolean;
     glow?: boolean;
+    isImage?: boolean;
+    imageSrc?: string;
+    imageDrawH?: number; // actual rendered height; lineH may include extra bottom padding
+    isUrl?: boolean;
+    href?: string;
   }
 
   const bodyLines: TextLine[] = [];
@@ -201,6 +233,23 @@ export function drawSpeechBubble(
         lineH: metaFs * 1.6,
       }),
     );
+  }
+
+  // ── Media section (images + URLs) between description and bullets ────────────
+  if (content.media && content.media.length > 0) {
+    bodyLines.push({ text: '', font: '', color: '', indent: 0, lineH: metaFs * 1.2, isDivider: true })
+    const imgDrawH  = Math.round(canvasH * 0.18)                                 // actual rendered height
+    const imgLineH  = imgDrawH + Math.round(bulletFs * 1.4)                       // layout height = drawn height + gap before next line
+    const urlFont   = `400 ${bulletFs}px 'Perpetua', serif`
+    ctx.font = urlFont
+    for (const item of content.media) {
+      if (item.type === 'image' && item.src) {
+        bodyLines.push({ text: '', font: '', color: '', indent: 0, lineH: imgLineH, isImage: true, imageSrc: item.src, imageDrawH: imgDrawH })
+      } else if (item.type === 'url' && item.href) {
+        const label = item.label ?? item.href
+        bodyLines.push({ text: `↗  ${label}`, font: urlFont, color: 'rgba(80,210,165,0.95)', indent: bulletFs * 0.6, lineH: bulletFs * 1.8, isUrl: true, href: item.href })
+      }
+    }
   }
 
   if (content.bullets.length > 0) {
@@ -243,13 +292,16 @@ export function drawSpeechBubble(
     maxBoxH,
   );
   const availableH = boxH - ornH * 2 - PAD_Y * 2;
+  // Small buffer prevents a line from "barely fitting" (< 1px to spare) and
+  // being orphaned from the rest of its group on the next page.
+  const pageBreakBuffer = Math.round(bulletFs * 0.5);
 
   // Split bodyLines into pages by available height
   const pages: TextLine[][] = [];
   let curPage: TextLine[] = [];
   let curH = 0;
   for (const line of bodyLines) {
-    if (curH + line.lineH > availableH && curPage.length > 0) {
+    if (curH + line.lineH > availableH - pageBreakBuffer && curPage.length > 0) {
       pages.push(curPage);
       curPage = [];
       curH = 0;
@@ -311,6 +363,8 @@ export function drawSpeechBubble(
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   let ty = contentTop + (pageLines[0]?.lineH ?? 0) * 0.78;
+  _lastMediaLinks = [];
+  _lastImageRects = [];
 
   pageLines.forEach((line) => {
     if (line.isDivider) {
@@ -323,6 +377,64 @@ export function drawSpeechBubble(
       ty += line.lineH;
       return;
     }
+
+    // ── Inline image ──────────────────────────────────────────────────────────
+    if (line.isImage && line.imageSrc) {
+      const renderH = line.imageDrawH ?? line.lineH; // actual draw height (lineH includes bottom padding)
+      const img = getImage(line.imageSrc);
+      if (!img) {
+        // Trigger lazy load; show placeholder until ready
+        loadImage(line.imageSrc).catch(() => {});
+        ctx.fillStyle = "rgba(255,255,255,0.05)";
+        ctx.fillRect(PAD_X, ty, innerW, renderH);
+        ctx.fillStyle = "rgba(160,200,180,0.30)";
+        ctx.font = `400 ${metaFs}px 'Perpetua', serif`;
+        ctx.textAlign = "center";
+        ctx.fillText("Loading…", canvasW / 2, ty + renderH / 2);
+        ctx.textAlign = "left";
+      } else {
+        const aspect  = img.naturalWidth / (img.naturalHeight || 1);
+        const drawW   = Math.min(innerW, renderH * aspect);
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(PAD_X, ty, drawW, renderH, 5);
+        ctx.clip();
+        ctx.drawImage(img, PAD_X, ty, drawW, renderH);
+        ctx.restore();
+        // Hover hint — magnifier tint
+        ctx.strokeStyle = "rgba(80,180,140,0.35)";
+        ctx.lineWidth   = 1;
+        ctx.beginPath();
+        ctx.roundRect(PAD_X, ty, drawW, renderH, 5);
+        ctx.stroke();
+        // Store rect so GameCanvas can open the viewer on click
+        _lastImageRects.push({ rect: { x: PAD_X, y: ty, w: drawW, h: renderH }, src: line.imageSrc! });
+      }
+      ty += line.lineH; // advance by full layout height (includes bottom gap)
+      return;
+    }
+
+    // ── Inline URL ────────────────────────────────────────────────────────────
+    if (line.isUrl && line.href) {
+      ctx.font      = line.font;
+      ctx.fillStyle = line.color;
+      ctx.shadowColor = "rgba(80,210,165,0.40)";
+      ctx.shadowBlur  = 5;
+      ctx.fillText(line.text, PAD_X + line.indent, ty);
+      ctx.shadowBlur  = 0;
+      // Manual underline
+      const tw = ctx.measureText(line.text).width;
+      ctx.fillStyle = line.color;
+      ctx.fillRect(PAD_X + line.indent, ty + 2, tw, 1);
+      // Store rect for click detection
+      _lastMediaLinks.push({
+        rect: { x: PAD_X + line.indent, y: ty - line.lineH * 0.82, w: tw, h: line.lineH },
+        href: line.href,
+      });
+      ty += line.lineH;
+      return;
+    }
+
     if (line.glow) {
       ctx.shadowColor = "rgba(160,240,210,0.35)";
       ctx.shadowBlur = 6;
@@ -337,6 +449,8 @@ export function drawSpeechBubble(
   });
 
   ctx.restore(); // end clip
+
+  _lastLinkRect = null; // no longer used; kept for API compat
 
   // Pagination buttons + indicator — only when multi-page
   if (multiPage) {

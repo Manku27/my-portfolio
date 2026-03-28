@@ -35,8 +35,8 @@ export interface TimelineEntry {
   title: string
   body?: string
   rating?: Rating
-  url?: string           // external link
-  imageUrl?: string      // Vercel Blob URL when wired
+  urls?: string[]        // external links (shown as clickable lines in bubble)
+  imageUrls?: string[]   // images shown inline in bubble (public/ paths or any URL)
   tags?: string[]
   isMilestone?: boolean
   // If this entry was auto-generated from another content type
