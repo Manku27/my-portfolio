@@ -16,12 +16,6 @@ import {
   lampBulbY,
   type SpawnAssets,
 } from "./Room";
-import {
-  drawAboutSection,
-  getAboutPlatforms,
-  ABOUT_SECTION_COUNT,
-  RETURN_SECTION,
-} from "./AboutRoom";
 import { getWorkTriggers, drawSkillBar, type WorkTrigger } from "./WorkRoom";
 import {
   getTimelineTriggers,
@@ -264,12 +258,6 @@ export function GameCanvas() {
     let viewerClose: { x: number; y: number; w: number; h: number } | null = null;
     const viewerOpen = () => viewerSrc !== null;
 
-    // Vertical world (About Me) state
-    let worldMode = "horizontal" as "horizontal" | "vertical";
-    let charWorldY = 0; // world-space Y in vertical mode
-    let charVX = 0; // world-space X in vertical mode (canvas-local, 0..canvasW)
-    let currentSection = 0;
-
     // Charm menu state
     let charmOpen = false;
     let charmProgress = 0; // 0=closed, 1=fully open (animated)
@@ -331,21 +319,6 @@ export function GameCanvas() {
 
       keys.add(e.code);
       if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
-        // Return from About Me world when standing on the last platform
-        if (
-          worldMode === "vertical" &&
-          currentSection === RETURN_SECTION &&
-          isGrounded
-        ) {
-          worldMode = "horizontal";
-          charX =
-            SPAWN_ROOM * canvas.width + canvas.width * 0.14 - CHARACTER_W / 2;
-          charY = groundY() - CHARACTER_H;
-          velY = -JUMP_VEL * 0.45;
-          isGrounded = false;
-          jumpsLeft = 1;
-          return;
-        }
         if (jumpsLeft > 0) {
           velY = -JUMP_VEL;
           isGrounded = false;
@@ -384,7 +357,7 @@ export function GameCanvas() {
       // Keep spawn island brick collision in sync with canvas height
       bricks[0].yFromGround = getIslandY(canvas.height);
 
-      if (worldMode === "horizontal") {
+      {
         // ── Horizontal movement ─────────────────────────────────────────────
         if (!charmOpen) {
           if (keys.has("ArrowLeft") || keys.has("KeyA")) charX -= SPEED * delta;
@@ -458,13 +431,11 @@ export function GameCanvas() {
           velY = 0;
           isGrounded = true;
           jumpsLeft = 2;
-        } else if (overGap && charY + CHARACTER_H >= ground) {
-          // Fell through side gap — enter the About Me vertical world
-          worldMode = "vertical";
-          charVX = canvas.width / 2 - CHARACTER_W / 2;
-          charWorldY = 0;
-          currentSection = 0;
-          velY = 120;
+        } else if (overGap && charY >= canvas.height) {
+          // Fell off the bottom — respawn at top of canvas, fall onto island
+          charX = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2;
+          charY = -CHARACTER_H;
+          velY = 0;
           isGrounded = false;
           jumpsLeft = 1;
         }
@@ -557,58 +528,6 @@ export function GameCanvas() {
             bubbleContent = null;
           }
         }
-      } else {
-        // ── Vertical world (About Me) ────────────────────────────────────────
-        if (!charmOpen) {
-          if (keys.has("ArrowLeft") || keys.has("KeyA"))
-            charVX -= SPEED * delta;
-          if (keys.has("ArrowRight") || keys.has("KeyD"))
-            charVX += SPEED * delta;
-        }
-        charVX = Math.max(0, Math.min(canvas.width - CHARACTER_W, charVX));
-
-        velY += GRAVITY * delta;
-        charWorldY += velY * delta;
-
-        // Ceiling — can't go above the top of the world
-        if (charWorldY < 0) {
-          charWorldY = 0;
-          velY = Math.max(0, velY);
-        }
-
-        // Section snap
-        currentSection = Math.max(
-          0,
-          Math.min(
-            ABOUT_SECTION_COUNT - 1,
-            Math.floor(charWorldY / canvas.height),
-          ),
-        );
-
-        // Platform collision
-        const sectionTopY = currentSection * canvas.height;
-        const localY = charWorldY - sectionTopY;
-        const platforms = getAboutPlatforms(
-          currentSection,
-          canvas.width,
-          canvas.height,
-        );
-        isGrounded = false;
-        for (const plat of platforms) {
-          if (velY > 0) {
-            const feet = localY + CHARACTER_H;
-            if (feet >= plat.y && feet < plat.y + 20) {
-              const inX =
-                charVX + CHARACTER_W > plat.x && charVX < plat.x + plat.w;
-              if (inX) {
-                velY = 0;
-                charWorldY = sectionTopY + plat.y - CHARACTER_H;
-                isGrounded = true;
-                jumpsLeft = 2;
-              }
-            }
-          }
-        }
       }
 
       // ── Animation state ────────────────────────────────────────────────
@@ -668,7 +587,7 @@ export function GameCanvas() {
       const time = timestamp / 1000;
 
       // ── Draw ──────────────────────────────────────────────────────────────
-      if (worldMode === "horizontal") {
+      {
         const cameraX = currentRoom * canvas.width;
         const screenX = charX - cameraX;
         drawRoomBackground(ctx, currentRoom, canvas.width, canvas.height);
@@ -721,18 +640,6 @@ export function GameCanvas() {
           ctx,
           screenX,
           charY,
-          spriteSheet,
-          currentFrame,
-          facingLeft,
-        );
-      } else {
-        const sectionTopY = currentSection * canvas.height;
-        const vertScreenY = charWorldY - sectionTopY;
-        drawAboutSection(ctx, currentSection, canvas.width, canvas.height);
-        drawCharacter(
-          ctx,
-          charVX,
-          vertScreenY,
           spriteSheet,
           currentFrame,
           facingLeft,
@@ -956,32 +863,27 @@ export function GameCanvas() {
       const gnd = groundY();
 
       if (id === "home") {
-        worldMode = "horizontal";
         charX = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2;
         charY = -CHARACTER_H * 3;
         velY = 0;
         isGrounded = false;
         jumpsLeft = 1;
       } else if (id === "work") {
-        worldMode = "horizontal";
         charX = 0 * canvas.width + canvas.width * 0.5 - CHARACTER_W / 2;
         charY = -CHARACTER_H * 3;
         velY = 0;
         isGrounded = false;
         jumpsLeft = 1;
       } else if (id === "timeline") {
-        worldMode = "horizontal";
         charX = 2 * canvas.width + canvas.width * 0.5 - CHARACTER_W / 2;
         charY = -CHARACTER_H * 3;
         velY = 0;
         isGrounded = false;
         jumpsLeft = 1;
       } else if (id === "about") {
-        worldMode = "vertical";
-        charVX = canvas.width / 2 - CHARACTER_W / 2;
-        charWorldY = 0;
-        currentSection = 0;
-        velY = 120;
+        charX = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2;
+        charY = gnd - getIslandY(canvas.height) - CHARACTER_H - 8;
+        velY = 0;
         isGrounded = false;
         jumpsLeft = 1;
       }

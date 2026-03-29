@@ -650,26 +650,6 @@ export function drawRoomEnvironment(
       canvasHeight,
     );
 
-    // Void label — anchored below island sprite bottom (wp_plat_float_01.png: 266×68px)
-    // 72 ≈ 68 × 280 / 266 (sprite aspect × collision width), +20px gap
-    const platSpriteH = Math.round(72 * spawnScale(canvasWidth));
-    const labelY = groundY - getIslandY(canvasHeight) + platSpriteH + 20;
-    const labelFs = Math.max(14, Math.floor(canvasWidth * 0.018));
-    ctx.font = `400 ${labelFs}px 'Perpetua', serif`;
-    ctx.fillStyle = "rgba(120,190,165,0.65)";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.shadowColor = "rgba(60,200,140,0.55)";
-    ctx.shadowBlur = 7;
-    ctx.fillText(
-      "↓  Fall to know more about Mayank's life",
-      canvasWidth / 2,
-      labelY,
-    );
-    ctx.shadowBlur = 0;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
-
     const layout = nameLayout ?? getNameLayout(ctx, canvasWidth, canvasHeight);
     drawNamePlatform(ctx, layout, canvasWidth, canvasHeight, nameGlow);
   } else {
