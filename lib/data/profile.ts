@@ -12,7 +12,7 @@ export const profile: Profile = {
 I started at 3.5 LPA and grew 7x in five years — not through a plan, but by consistently shipping things that mattered and staying curious enough to keep learning.
 
 I write technical content, publish open-source tooling with real adoption, and build side products that solve real problems. I'm looking for international remote roles or contracts where I'm treated as a peer, not cheap labour.`,
-  availability: 'Open to international remote roles and contracts · 50 LPA',
+  availability: 'Open to international remote roles and contracts·',
   socials: [
     {
       platform: 'LinkedIn',

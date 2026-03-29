@@ -68,7 +68,7 @@ significantly higher. The gap is positioning and visibility, not ability.
 I'm fixing that.`,
 
   // What he's looking for
-  lookingFor: `An international remote role or contract at 50 LPA in any model
+  lookingFor: `An international remote role or contract, in any model
 — full-time, freelance, retainer. Work only on products I believe in. Clients
 who treat me as a peer. Eventually, fully independent.`,
 

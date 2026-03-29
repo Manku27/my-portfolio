@@ -205,7 +205,7 @@ export interface Profile {
   shortBio: string             // one-liner for hero
   socials: SocialLink[]
   skills: SkillGroup[]
-  availability: string         // e.g. "Open to remote contracts — 50 LPA"
+  availability: string
 }
 
 export interface SkillGroup {
