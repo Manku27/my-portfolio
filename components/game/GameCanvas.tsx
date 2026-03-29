@@ -816,7 +816,6 @@ export function GameCanvas() {
         ["/sprites/charms/Home_charm.png", () => {}],
         ["/sprites/charms/Work_charm.png", () => {}],
         ["/sprites/charms/Timeline__charm.png", () => {}],
-        ["/sprites/charms/About_charm.png", () => {}],
         // Skill bar icons
         ["/sprites/skills/JavaScript.png", () => {}],
         ["/sprites/skills/Typescript.png", () => {}],
@@ -877,12 +876,6 @@ export function GameCanvas() {
       } else if (id === "timeline") {
         charX = 2 * canvas.width + canvas.width * 0.5 - CHARACTER_W / 2;
         charY = -CHARACTER_H * 3;
-        velY = 0;
-        isGrounded = false;
-        jumpsLeft = 1;
-      } else if (id === "about") {
-        charX = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2;
-        charY = gnd - getIslandY(canvas.height) - CHARACTER_H - 8;
         velY = 0;
         isGrounded = false;
         jumpsLeft = 1;

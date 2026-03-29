@@ -7,7 +7,6 @@ const CHARMS: Array<{ id: string; label: string; color: string; img: string }> =
   { id: 'home',     label: 'Home',     color: '#d0e8e0', img: '/sprites/charms/Home_charm.png'       },
   { id: 'work',     label: 'Work',     color: '#c89030', img: '/sprites/charms/Work_charm.png'       },
   { id: 'timeline', label: 'Timeline', color: '#30c8a0', img: '/sprites/charms/Timeline__charm.png'  },
-  { id: 'about',    label: 'About',    color: '#80c0e0', img: '/sprites/charms/About_charm.png'      },
 ]
 
 export const CHARM_COUNT = CHARMS.length
