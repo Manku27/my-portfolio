@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { drawCharacter, CHARACTER_W, CHARACTER_H } from "./Character";
 import {
   KNIGHT_SPRITE_PATH,
@@ -73,6 +73,7 @@ const LAMP_HOVER_RADIUS = 70; // px — distance at which lamp starts glowing
 
 export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -341,6 +342,7 @@ export function GameCanvas() {
 
     let rafId = 0;
     let lastTimestamp = 0;
+    let firstFrame = true;
 
     const loop = (timestamp: number) => {
       const delta = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
@@ -712,149 +714,105 @@ export function GameCanvas() {
         viewerClose = rects.close;
       }
 
+      // Hide loading overlay after the first fully-drawn frame
+      if (firstFrame) {
+        firstFrame = false;
+        setLoading(false);
+      }
+
       rafId = requestAnimationFrame(loop);
     };
 
-    // Preload all four game fonts via FontFace API before the first frame.
-    // CSS @font-face alone doesn't guarantee fonts appear in document.fonts in time.
+    const audioCleanupRef = { current: null as (() => void) | null };
+
     const preloadFonts = async () => {
       const fontDefs = [
-        { family: "Trajan Pro", url: "/fonts/Trajan-Pro.otf", weight: "400" },
-        {
-          family: "Trajan Pro",
-          url: "/fonts/Trajan-Pro-Bold.otf",
-          weight: "700",
-        },
-        {
-          family: "Perpetua",
-          url: "/fonts/Perpetua-Regular.woff2",
-          weight: "400",
-        },
-        {
-          family: "Perpetua",
-          url: "/fonts/Perpetua-Bold.woff2",
-          weight: "700",
-        },
+        { family: "Trajan Pro", url: "/fonts/Trajan-Pro.otf",       weight: "400" },
+        { family: "Trajan Pro", url: "/fonts/Trajan-Pro-Bold.otf",  weight: "700" },
+        { family: "Perpetua",   url: "/fonts/Perpetua-Regular.woff2", weight: "400" },
+        { family: "Perpetua",   url: "/fonts/Perpetua-Bold.woff2",  weight: "700" },
       ];
 
-      const assetSrcs: Array<[string, (img: HTMLImageElement) => void]> = [
-        [
-          "/sprites/town_floor_01.png",
-          (img) => {
-            spawnAssets = { ...spawnAssets, groundImg: img };
-          },
-        ],
-        [
-          "/sprites/station_pole.png",
-          (img) => {
-            spawnAssets = { ...spawnAssets, poleImg: img };
-          },
-        ],
-        [
-          "/sprites/sign_post_01.png",
-          (img) => {
-            spawnAssets = { ...spawnAssets, sign1Img: img };
-          },
-        ],
-        [
-          "/sprites/sign_post_02.png",
-          (img) => {
-            spawnAssets = { ...spawnAssets, sign2Img: img };
-          },
-        ],
-        [
-          "/sprites/town_bench.png",
-          (img) => {
-            spawnAssets = { ...spawnAssets, benchImg: img };
-          },
-        ],
-        [
-          "/sprites/grass_01_idle0000.png",
-          (img) => {
-            grassImgs = { ...grassImgs, a: img };
-          },
-        ],
-        [
-          "/sprites/grass_03_idle0015.png",
-          (img) => {
-            grassImgs = { ...grassImgs, b: img };
-          },
-        ],
-        [
-          "/sprites/simple_grass0007.png",
-          (img) => {
-            grassImgs = { ...grassImgs, c: img };
-          },
-        ],
-        [
-          "/sprites/wp_plat_float_01.png",
-          (img) => {
-            platImg = img;
-          },
-        ],
-        // Dialogue decorations — no local variable needed; getImage() reads the cache
+      // ── Tier 1: everything needed to paint the spawn room ──────────────────
+      const tier1: Array<[string, (img: HTMLImageElement) => void]> = [
+        // Spawn room environment
+        ["/sprites/town_floor_01.png",       (img) => { spawnAssets = { ...spawnAssets, groundImg: img }; }],
+        ["/sprites/station_pole.png",         (img) => { spawnAssets = { ...spawnAssets, poleImg:   img }; }],
+        ["/sprites/sign_post_01.png",         (img) => { spawnAssets = { ...spawnAssets, sign1Img:  img }; }],
+        ["/sprites/sign_post_02.png",         (img) => { spawnAssets = { ...spawnAssets, sign2Img:  img }; }],
+        ["/sprites/town_bench.png",           (img) => { spawnAssets = { ...spawnAssets, benchImg:  img }; }],
+        ["/sprites/grass_01_idle0000.png",    (img) => { grassImgs   = { ...grassImgs,   a: img };          }],
+        ["/sprites/grass_03_idle0015.png",    (img) => { grassImgs   = { ...grassImgs,   b: img };          }],
+        ["/sprites/simple_grass0007.png",     (img) => { grassImgs   = { ...grassImgs,   c: img };          }],
+        ["/sprites/wp_plat_float_01.png",     (img) => { platImg = img;                                     }],
+        // Dialogue ornaments
         ["/sprites/Controller_Dialogue_0000_top.png", () => {}],
         ["/sprites/Controller_Dialogue_0001_bot.png", () => {}],
-        // Social HUD
-        ["/sprites/hud_health_frame.png", () => {}],
-        ["/sprites/social_linkedin.webp", () => {}],
-        ["/sprites/social_github.png", () => {}],
-        ["/sprites/social_gmail.webp", () => {}],
-        ["/sprites/social_youtube.png", () => {}],
-        ["/sprites/social_medium.webp", () => {}],
-        ["/sprites/social_whatsapp.png", () => {}],
-        ["/sprites/social_discord.webp", () => {}],
-        // Work world logos
-        ["/sprites/work/merkle.webp", () => {}],
-        ["/sprites/work/Tech_Mahindra.png", () => {}],
-        ["/sprites/work/pwc.png", () => {}],
-        ["/sprites/work/Infosys.webp", () => {}],
-        ["/sprites/work/elev_lift.png", () => {}],
-        // Timeline pole sprites
-        ...POLE_SRCS.map((src): [string, () => void] => [src, () => {}]),
-        // Charm menu icons
-        ["/sprites/charms/Home_charm.png", () => {}],
-        ["/sprites/charms/Work_charm.png", () => {}],
-        ["/sprites/charms/Timeline__charm.png", () => {}],
-        // Skill bar icons
-        ["/sprites/skills/JavaScript.png", () => {}],
-        ["/sprites/skills/Typescript.png", () => {}],
-        ["/sprites/skills/React.png", () => {}],
-        ["/sprites/skills/Next.png", () => {}],
-        ["/sprites/skills/nodejs.jpg", () => {}],
-        ["/sprites/skills/contentful.png", () => {}],
-        ["/sprites/skills/cloudinary.png", () => {}],
+        // Social HUD — visible from the first frame
+        ["/sprites/hud_health_frame.png",    () => {}],
+        ["/sprites/social_linkedin.webp",    () => {}],
+        ["/sprites/social_github.png",       () => {}],
+        ["/sprites/social_gmail.webp",       () => {}],
+        ["/sprites/social_youtube.png",      () => {}],
+        ["/sprites/social_medium.webp",      () => {}],
+        ["/sprites/social_whatsapp.png",     () => {}],
+        ["/sprites/social_discord.webp",     () => {}],
       ];
+
+      const loadAsset = async ([src, setter]: [string, (img: HTMLImageElement) => void]) => {
+        try { setter(await loadImage(src)); } catch {
+          if (process.env.NODE_ENV === "development")
+            console.warn(`[Game] Asset failed: ${src}`);
+        }
+      };
 
       await Promise.all([
         ...fontDefs.map(async ({ family, url, weight }) => {
           try {
-            const face = new FontFace(family, `url(${url})`, {
-              weight,
-              style: "normal",
-            });
+            const face = new FontFace(family, `url(${url})`, { weight, style: "normal" });
             await face.load();
             document.fonts.add(face);
           } catch {
-            if (process.env.NODE_ENV === "development") {
-              console.warn(
-                `[Game] Font failed to load: ${family} weight ${weight} — ${url}`,
-              );
-            }
+            if (process.env.NODE_ENV === "development")
+              console.warn(`[Game] Font failed: ${family} ${weight} — ${url}`);
           }
         }),
-        ...assetSrcs.map(async ([src, setter]) => {
-          try {
-            setter(await loadImage(src));
-          } catch {
-            if (process.env.NODE_ENV === "development") {
-              console.warn(`[Game] Asset failed to load: ${src}`);
-            }
-          }
-        }),
+        ...tier1.map(loadAsset),
       ]);
       await document.fonts.ready;
+
+      // First frame — spawn room is fully renderable, overlay will clear
       rafId = requestAnimationFrame(loop);
+
+      // ── Tier 2: charms + work room + skills + audio (after first paint) ──────
+      audioCleanupRef.current = initAudio(); // start buffering mp3 — won't play until first keypress
+      const tier2: Array<[string, (img: HTMLImageElement) => void]> = [
+        // Charm menu icons
+        ["/sprites/charms/Home_charm.png",      () => {}],
+        ["/sprites/charms/Work_charm.png",      () => {}],
+        ["/sprites/charms/Timeline__charm.png", () => {}],
+        // Work room logos
+        ["/sprites/work/merkle.webp",           () => {}],
+        ["/sprites/work/Tech_Mahindra.png",     () => {}],
+        ["/sprites/work/pwc.png",               () => {}],
+        ["/sprites/work/Infosys.webp",          () => {}],
+        ["/sprites/work/elev_lift.png",         () => {}],
+        // Skill bar icons
+        ["/sprites/skills/JavaScript.png",      () => {}],
+        ["/sprites/skills/Typescript.png",      () => {}],
+        ["/sprites/skills/React.png",           () => {}],
+        ["/sprites/skills/Next.png",            () => {}],
+        ["/sprites/skills/nodejs.jpg",          () => {}],
+        ["/sprites/skills/contentful.png",      () => {}],
+        ["/sprites/skills/cloudinary.png",      () => {}],
+      ];
+
+      await Promise.all(tier2.map(loadAsset));
+
+      // ── Tier 3: timeline pole sprites (after work room) ────────────────────
+      await Promise.all(
+        POLE_SRCS.map((src) => loadImage(src).catch(() => {}))
+      );
     };
     // Charm routing — handle hash navigation from charm menu
     const navigateToCharm = (id: string) => {
@@ -894,8 +852,6 @@ export function GameCanvas() {
 
     preloadFonts();
 
-    const cleanupAudio = initAudio();
-
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener("resize", resize);
@@ -904,9 +860,72 @@ export function GameCanvas() {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("click", onMouseClick);
       window.removeEventListener("hashchange", onHashChange);
-      cleanupAudio();
+      audioCleanupRef.current?.();
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="fixed inset-0 w-full h-full" />;
+  return (
+    <>
+      <canvas ref={canvasRef} className="fixed inset-0 w-full h-full" />
+      {loading && <LoadingOverlay />}
+    </>
+  );
+}
+
+function LoadingOverlay() {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    // Brief delay so the fade-out is visible before unmount
+    const t = setTimeout(() => setVisible(false), 600);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 10,
+        background: "var(--color-bg)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "0.75rem",
+        opacity: visible ? 1 : 0,
+        transition: "opacity 600ms ease",
+        pointerEvents: "none",
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "var(--font-heading)",
+          fontSize: "clamp(1.1rem, 3vw, 1.8rem)",
+          color: "rgba(80,210,165,0.55)",
+          letterSpacing: "0.12em",
+          animation: "hk-pulse 2s ease-in-out infinite",
+        }}
+      >
+        Mayank Jhunjhunwala
+      </span>
+      <span
+        style={{
+          fontFamily: "var(--font-body)",
+          fontSize: "clamp(0.75rem, 1.5vw, 0.95rem)",
+          color: "rgba(120,170,150,0.35)",
+          letterSpacing: "0.2em",
+          textTransform: "uppercase",
+        }}
+      >
+        Loading…
+      </span>
+      <style>{`
+        @keyframes hk-pulse {
+          0%, 100% { opacity: 0.55; }
+          50%       { opacity: 0.85; }
+        }
+      `}</style>
+    </div>
+  );
 }
