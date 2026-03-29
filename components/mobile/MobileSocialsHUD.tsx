@@ -12,6 +12,13 @@ const ICON_SRCS: Record<string, string> = {
   Discord:   '/sprites/social_discord.webp',
 }
 
+// Icons whose source images have heavy internal padding — bump them up
+const ICON_SIZE: Record<string, number> = {
+  LinkedIn: 32,
+  GitHub:   30,
+  Discord:  34,
+}
+
 function handleSocialTap(e: React.TouchEvent | React.MouseEvent, social: SocialLink) {
   if (social.platform === 'Gmail') {
     e.preventDefault()
@@ -130,7 +137,11 @@ export default function MobileSocialsHUD({ socials }: Props) {
               <img
                 src={iconSrc}
                 alt={social.platform}
-                style={{ width: 21, height: 21, objectFit: 'contain' }}
+                style={{
+                  width:  ICON_SIZE[social.platform] ?? 26,
+                  height: ICON_SIZE[social.platform] ?? 26,
+                  objectFit: 'contain',
+                }}
               />
             </a>
           )
