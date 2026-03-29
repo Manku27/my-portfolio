@@ -1,5 +1,6 @@
 import { GameCanvas } from '@/components/game/GameCanvas'
 import { GameErrorBoundary } from '@/components/ErrorBoundary'
+import MobileRedirect from '@/components/MobileRedirect'
 import {
   profile,
   workExperience,
@@ -96,6 +97,7 @@ export default function Home() {
         </section>
       </main>
 
+      <MobileRedirect />
       <GameErrorBoundary>
         <GameCanvas />
       </GameErrorBoundary>

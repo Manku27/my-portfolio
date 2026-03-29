@@ -16,7 +16,11 @@
       "Bash($content = Get-Content \"C:\\\\code\\\\mayank-portfolio\\\\components\\\\game\\\\GameCanvas.tsx\" -Raw)",
       "Bash(Set-Content \"C:\\\\code\\\\mayank-portfolio\\\\components\\\\game\\\\GameCanvas.tsx\" -Value $content -NoNewline)",
       "Bash(npm run:*)",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(curl -s \"https://nextjs.org/docs/app/getting-started/proxy\")",
+      "Bash(firecrawl scrape:*)",
+      "Bash(npm list:*)",
+      "Bash(npx firecrawl-cli:*)"
     ]
   }
 }
