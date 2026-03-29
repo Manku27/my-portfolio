@@ -60,6 +60,20 @@ import {
   getSocialUrl,
   SOCIAL_COUNT,
 } from "./SocialHUD";
+import { profile } from "@/lib/data/profile";
+
+function showToast(msg: string) {
+  const el = document.createElement("div");
+  el.textContent = msg;
+  el.style.cssText =
+    "position:fixed;top:96px;left:50%;transform:translateX(-50%);" +
+    "background:rgba(30,50,40,0.92);color:#50d2a5;font-family:var(--font-body);" +
+    "font-size:16px;padding:10px 28px;border-radius:4px;pointer-events:none;" +
+    "z-index:100;opacity:1;transition:opacity 0.4s ease;white-space:nowrap;";
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; }, 1200);
+  setTimeout(() => { el.remove(); }, 1650);
+}
 
 const SPEED = 340; // px/s horizontal
 const GRAVITY = 1800; // px/s²
@@ -185,7 +199,8 @@ export function GameCanvas() {
       }
 
       // Social HUD icon click — always active, takes priority
-      const hudHit = getSocialHudHit(e.clientX, e.clientY);
+      const { cx: hudCx, cy: hudCy } = canvasCoords(e);
+      const hudHit = getSocialHudHit(hudCx, hudCy);
       if (hudHit !== -1) {
         if (hudHit === SOCIAL_COUNT) {
           // Resume download
@@ -193,6 +208,10 @@ export function GameCanvas() {
           a.href = "/resume.pdf";
           a.download = "Mayank_Jhunjhunwala_Resume.pdf";
           a.click();
+        } else if (hudHit === 2) {
+          // Gmail — copy email to clipboard
+          navigator.clipboard.writeText(profile.email ?? "").catch(() => {});
+          showToast("Email copied!");
         } else {
           const url = getSocialUrl(hudHit);
           if (url) window.open(url, "_blank", "noopener,noreferrer");
