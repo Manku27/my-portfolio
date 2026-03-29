@@ -1,4 +1,5 @@
 import { GameCanvas } from '@/components/game/GameCanvas'
+import { GameErrorBoundary } from '@/components/ErrorBoundary'
 import {
   profile,
   workExperience,
@@ -95,7 +96,9 @@ export default function Home() {
         </section>
       </main>
 
-      <GameCanvas />
+      <GameErrorBoundary>
+        <GameCanvas />
+      </GameErrorBoundary>
     </>
   )
 }
