@@ -71,11 +71,15 @@ function showToast(msg: string) {
     "font-size:16px;padding:10px 28px;border-radius:4px;pointer-events:none;" +
     "z-index:100;opacity:1;transition:opacity 0.4s ease;white-space:nowrap;";
   document.body.appendChild(el);
-  setTimeout(() => { el.style.opacity = "0"; }, 1200);
-  setTimeout(() => { el.remove(); }, 1650);
+  setTimeout(() => {
+    el.style.opacity = "0";
+  }, 1200);
+  setTimeout(() => {
+    el.remove();
+  }, 1650);
 }
 
-const SPEED = 340; // px/s horizontal
+const SPEED = 400; // px/s horizontal
 const GRAVITY = 1800; // px/s²
 const JUMP_VEL = 920; // px/s upward
 // Ground sits at 88% of canvas height — scales with screen size
@@ -126,12 +130,7 @@ export function GameCanvas() {
       mouseX = e.clientX - r.left;
       mouseY = e.clientY - r.top;
       if (charmOpen) {
-        const hit = getCharmAtPoint(
-          mouseX,
-          mouseY,
-          logicalW,
-          logicalH,
-        );
+        const hit = getCharmAtPoint(mouseX, mouseY, logicalW, logicalH);
         if (hit !== -1) charmSelected = hit;
       }
       hudHovered = getSocialHudHit(mouseX, mouseY);
@@ -140,12 +139,21 @@ export function GameCanvas() {
         ? hitRect(btnsHover.up, mouseX, mouseY) ||
           hitRect(btnsHover.down, mouseX, mouseY)
         : false;
-      const linkRect      = getLastBubbleLinkRect();
-      const overLink      = linkRect ? hitRect(linkRect, mouseX, mouseY) : false;
-      const overMediaLink = getLastBubbleMediaLinks().some(({ rect }) => hitRect(rect, mouseX, mouseY));
-      const overImage     = getLastBubbleImageRects().some(({ rect }) => hitRect(rect, mouseX, mouseY));
+      const linkRect = getLastBubbleLinkRect();
+      const overLink = linkRect ? hitRect(linkRect, mouseX, mouseY) : false;
+      const overMediaLink = getLastBubbleMediaLinks().some(({ rect }) =>
+        hitRect(rect, mouseX, mouseY),
+      );
+      const overImage = getLastBubbleImageRects().some(({ rect }) =>
+        hitRect(rect, mouseX, mouseY),
+      );
       canvas.style.cursor =
-        hudHovered !== -1 || overBtn || overLink || overMediaLink || overImage || viewerOpen()
+        hudHovered !== -1 ||
+        overBtn ||
+        overLink ||
+        overMediaLink ||
+        overImage ||
+        viewerOpen()
           ? "pointer"
           : "default";
     };
@@ -219,12 +227,7 @@ export function GameCanvas() {
         return;
       }
       if (!charmOpen) return;
-      const hit = getCharmAtPoint(
-        e.clientX,
-        e.clientY,
-        logicalW,
-        logicalH,
-      );
+      const hit = getCharmAtPoint(e.clientX, e.clientY, logicalW, logicalH);
       if (hit !== -1) {
         charmSelected = hit;
         window.location.hash = getCharmId(hit);
@@ -280,8 +283,9 @@ export function GameCanvas() {
     let bubbleContent: BubbleContent | null = null;
 
     // Full-screen image viewer state
-    let viewerSrc:   string | null = null;
-    let viewerClose: { x: number; y: number; w: number; h: number } | null = null;
+    let viewerSrc: string | null = null;
+    let viewerClose: { x: number; y: number; w: number; h: number } | null =
+      null;
     const viewerOpen = () => viewerSrc !== null;
 
     // Charm menu state
@@ -484,11 +488,7 @@ export function GameCanvas() {
           const dist = Math.hypot(
             mouseX - getLampX(logicalW, logicalH),
             mouseY -
-              lampBulbY(
-                ground - getIslandY(logicalH),
-                logicalW,
-                logicalH,
-              ),
+              lampBulbY(ground - getIslandY(logicalH), logicalW, logicalH),
           );
           lampGlow = lerp(
             lampGlow,
@@ -633,15 +633,7 @@ export function GameCanvas() {
             : undefined,
           currentRoom === 1 ? spawnAssets : undefined,
         );
-        drawBricks(
-          ctx,
-          bricks,
-          cameraX,
-          ground,
-          logicalW,
-          platImg,
-          logicalH,
-        );
+        drawBricks(ctx, bricks, cameraX, ground, logicalW, platImg, logicalH);
         if (currentRoom === 1)
           drawParticles(ctx, particles, logicalW, logicalH, time);
         if (currentRoom === 1) {
@@ -688,13 +680,7 @@ export function GameCanvas() {
 
       // Charm menu
       if (charmProgress > 0.01) {
-        drawCharmMenu(
-          ctx,
-          logicalW,
-          logicalH,
-          charmProgress,
-          charmSelected,
-        );
+        drawCharmMenu(ctx, logicalW, logicalH, charmProgress, charmSelected);
       }
 
       // Skill bar — work world only, fades when dialogue opens
@@ -753,40 +739,102 @@ export function GameCanvas() {
 
     const preloadFonts = async () => {
       const fontDefs = [
-        { family: "Trajan Pro", url: "/fonts/Trajan-Pro.otf",       weight: "400" },
-        { family: "Trajan Pro", url: "/fonts/Trajan-Pro-Bold.otf",  weight: "700" },
-        { family: "Perpetua",   url: "/fonts/Perpetua-Regular.woff2", weight: "400" },
-        { family: "Perpetua",   url: "/fonts/Perpetua-Bold.woff2",  weight: "700" },
+        { family: "Trajan Pro", url: "/fonts/Trajan-Pro.otf", weight: "400" },
+        {
+          family: "Trajan Pro",
+          url: "/fonts/Trajan-Pro-Bold.otf",
+          weight: "700",
+        },
+        {
+          family: "Perpetua",
+          url: "/fonts/Perpetua-Regular.woff2",
+          weight: "400",
+        },
+        {
+          family: "Perpetua",
+          url: "/fonts/Perpetua-Bold.woff2",
+          weight: "700",
+        },
       ];
 
       // ── Tier 1: everything needed to paint the spawn room ──────────────────
       const tier1: Array<[string, (img: HTMLImageElement) => void]> = [
         // Spawn room environment
-        ["/sprites/town_floor_01.png",       (img) => { spawnAssets = { ...spawnAssets, groundImg: img }; }],
-        ["/sprites/station_pole.png",         (img) => { spawnAssets = { ...spawnAssets, poleImg:   img }; }],
-        ["/sprites/sign_post_01.png",         (img) => { spawnAssets = { ...spawnAssets, sign1Img:  img }; }],
-        ["/sprites/sign_post_02.png",         (img) => { spawnAssets = { ...spawnAssets, sign2Img:  img }; }],
-        ["/sprites/town_bench.png",           (img) => { spawnAssets = { ...spawnAssets, benchImg:  img }; }],
-        ["/sprites/grass_01_idle0000.png",    (img) => { grassImgs   = { ...grassImgs,   a: img };          }],
-        ["/sprites/grass_03_idle0015.png",    (img) => { grassImgs   = { ...grassImgs,   b: img };          }],
-        ["/sprites/simple_grass0007.png",     (img) => { grassImgs   = { ...grassImgs,   c: img };          }],
-        ["/sprites/wp_plat_float_01.png",     (img) => { platImg = img;                                     }],
+        [
+          "/sprites/town_floor_01.png",
+          (img) => {
+            spawnAssets = { ...spawnAssets, groundImg: img };
+          },
+        ],
+        [
+          "/sprites/station_pole.png",
+          (img) => {
+            spawnAssets = { ...spawnAssets, poleImg: img };
+          },
+        ],
+        [
+          "/sprites/sign_post_01.png",
+          (img) => {
+            spawnAssets = { ...spawnAssets, sign1Img: img };
+          },
+        ],
+        [
+          "/sprites/sign_post_02.png",
+          (img) => {
+            spawnAssets = { ...spawnAssets, sign2Img: img };
+          },
+        ],
+        [
+          "/sprites/town_bench.png",
+          (img) => {
+            spawnAssets = { ...spawnAssets, benchImg: img };
+          },
+        ],
+        [
+          "/sprites/grass_01_idle0000.png",
+          (img) => {
+            grassImgs = { ...grassImgs, a: img };
+          },
+        ],
+        [
+          "/sprites/grass_03_idle0015.png",
+          (img) => {
+            grassImgs = { ...grassImgs, b: img };
+          },
+        ],
+        [
+          "/sprites/simple_grass0007.png",
+          (img) => {
+            grassImgs = { ...grassImgs, c: img };
+          },
+        ],
+        [
+          "/sprites/wp_plat_float_01.png",
+          (img) => {
+            platImg = img;
+          },
+        ],
         // Dialogue ornaments
         ["/sprites/Controller_Dialogue_0000_top.png", () => {}],
         ["/sprites/Controller_Dialogue_0001_bot.png", () => {}],
         // Social HUD — visible from the first frame
-        ["/sprites/hud_health_frame.png",    () => {}],
-        ["/sprites/social_linkedin.webp",    () => {}],
-        ["/sprites/social_github.png",       () => {}],
-        ["/sprites/social_gmail.webp",       () => {}],
-        ["/sprites/social_youtube.png",      () => {}],
-        ["/sprites/social_medium.webp",      () => {}],
-        ["/sprites/social_whatsapp.png",     () => {}],
-        ["/sprites/social_discord.webp",     () => {}],
+        ["/sprites/hud_health_frame.png", () => {}],
+        ["/sprites/social_linkedin.webp", () => {}],
+        ["/sprites/social_github.png", () => {}],
+        ["/sprites/social_gmail.webp", () => {}],
+        ["/sprites/social_youtube.png", () => {}],
+        ["/sprites/social_medium.webp", () => {}],
+        ["/sprites/social_whatsapp.png", () => {}],
+        ["/sprites/social_discord.webp", () => {}],
       ];
 
-      const loadAsset = async ([src, setter]: [string, (img: HTMLImageElement) => void]) => {
-        try { setter(await loadImage(src)); } catch {
+      const loadAsset = async ([src, setter]: [
+        string,
+        (img: HTMLImageElement) => void,
+      ]) => {
+        try {
+          setter(await loadImage(src));
+        } catch {
           if (process.env.NODE_ENV === "development")
             console.warn(`[Game] Asset failed: ${src}`);
         }
@@ -795,7 +843,10 @@ export function GameCanvas() {
       await Promise.all([
         ...fontDefs.map(async ({ family, url, weight }) => {
           try {
-            const face = new FontFace(family, `url(${url})`, { weight, style: "normal" });
+            const face = new FontFace(family, `url(${url})`, {
+              weight,
+              style: "normal",
+            });
             await face.load();
             document.fonts.add(face);
           } catch {
@@ -814,31 +865,29 @@ export function GameCanvas() {
       audioCleanupRef.current = initAudio(); // start buffering mp3 — won't play until first keypress
       const tier2: Array<[string, (img: HTMLImageElement) => void]> = [
         // Charm menu icons
-        ["/sprites/charms/Home_charm.png",      () => {}],
-        ["/sprites/charms/Work_charm.png",      () => {}],
+        ["/sprites/charms/Home_charm.png", () => {}],
+        ["/sprites/charms/Work_charm.png", () => {}],
         ["/sprites/charms/Timeline__charm.png", () => {}],
         // Work room logos
-        ["/sprites/work/merkle.webp",           () => {}],
-        ["/sprites/work/Tech_Mahindra.png",     () => {}],
-        ["/sprites/work/pwc.png",               () => {}],
-        ["/sprites/work/Infosys.webp",          () => {}],
-        ["/sprites/work/elev_lift.png",         () => {}],
+        ["/sprites/work/merkle.webp", () => {}],
+        ["/sprites/work/Tech_Mahindra.png", () => {}],
+        ["/sprites/work/pwc.png", () => {}],
+        ["/sprites/work/Infosys.webp", () => {}],
+        ["/sprites/work/elev_lift.png", () => {}],
         // Skill bar icons
-        ["/sprites/skills/JavaScript.png",      () => {}],
-        ["/sprites/skills/Typescript.png",      () => {}],
-        ["/sprites/skills/React.png",           () => {}],
-        ["/sprites/skills/Next.png",            () => {}],
-        ["/sprites/skills/nodejs.jpg",          () => {}],
-        ["/sprites/skills/contentful.png",      () => {}],
-        ["/sprites/skills/cloudinary.png",      () => {}],
+        ["/sprites/skills/JavaScript.png", () => {}],
+        ["/sprites/skills/Typescript.png", () => {}],
+        ["/sprites/skills/React.png", () => {}],
+        ["/sprites/skills/Next.png", () => {}],
+        ["/sprites/skills/nodejs.jpg", () => {}],
+        ["/sprites/skills/contentful.png", () => {}],
+        ["/sprites/skills/cloudinary.png", () => {}],
       ];
 
       await Promise.all(tier2.map(loadAsset));
 
       // ── Tier 3: timeline pole sprites (after work room) ────────────────────
-      await Promise.all(
-        POLE_SRCS.map((src) => loadImage(src).catch(() => {}))
-      );
+      await Promise.all(POLE_SRCS.map((src) => loadImage(src).catch(() => {})));
     };
     // Charm routing — handle hash navigation from charm menu
     const navigateToCharm = (id: string) => {
