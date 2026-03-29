@@ -355,7 +355,15 @@ export interface TimelineTrigger {
   content: BubbleContent
 }
 
+let _cachedTimelineTriggers: TimelineTrigger[] | null = null;
+let _cachedTimelineCanvasW = 0;
+let _cachedTimelineGroundY = 0;
+
 export function getTimelineTriggers(canvasW: number, groundY: number): TimelineTrigger[] {
+  if (_cachedTimelineTriggers && canvasW === _cachedTimelineCanvasW && groundY === _cachedTimelineGroundY) {
+    return _cachedTimelineTriggers;
+  }
+
   const triggers: TimelineTrigger[] = []
 
   ROOM_CHUNKS.forEach((chunk, chunkIndex) => {
@@ -371,5 +379,8 @@ export function getTimelineTriggers(canvasW: number, groundY: number): TimelineT
     })
   })
 
+  _cachedTimelineCanvasW = canvasW;
+  _cachedTimelineGroundY = groundY;
+  _cachedTimelineTriggers = triggers;
   return triggers
 }

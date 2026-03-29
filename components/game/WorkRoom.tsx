@@ -288,10 +288,18 @@ export interface WorkTrigger {
   content: BubbleContent;
 }
 
+let _cachedWorkTriggers: WorkTrigger[] | null = null;
+let _cachedWorkCanvasW = 0;
+let _cachedWorkGroundY = 0;
+
 export function getWorkTriggers(
   canvasW: number,
   groundY: number,
 ): WorkTrigger[] {
+  if (_cachedWorkTriggers && canvasW === _cachedWorkCanvasW && groundY === _cachedWorkGroundY) {
+    return _cachedWorkTriggers;
+  }
+
   const wScale     = Math.min(1.0, canvasW / 1530);
   const islandTopY = groundY - ISLAND_OFFSET;
 
@@ -320,6 +328,9 @@ export function getWorkTriggers(
     content: pavilionToBubble(projects, consultingEngagements),
   });
 
+  _cachedWorkCanvasW = canvasW;
+  _cachedWorkGroundY = groundY;
+  _cachedWorkTriggers = triggers;
   return triggers;
 }
 

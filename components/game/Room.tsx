@@ -257,11 +257,18 @@ export interface NameLayout {
   platformX: number; // canvas X of left edge (centred)
 }
 
+let _cachedNameLayout: NameLayout | null = null;
+let _cachedNameW = 0;
+let _cachedNameH = 0;
+
 export function getNameLayout(
   ctx: CanvasRenderingContext2D,
   canvasW: number,
   canvasH: number,
 ): NameLayout {
+  if (_cachedNameLayout && canvasW === _cachedNameW && canvasH === _cachedNameH) {
+    return _cachedNameLayout;
+  }
   const centreY = canvasH * NAME_CENTRE_Y_FAC;
   const [, last] = profile.name.split(" ");
 
@@ -292,32 +299,39 @@ export function getNameLayout(
     (canvasW * SINGLE_TARGET_FAC * 100) / fullW,
   );
 
+  let result: NameLayout;
+
   if (singleFontSize >= MIN_SINGLE_FONT) {
     const platformW = (fullW * singleFontSize) / 100;
     const platformX = (canvasW - platformW) / 2;
     const platformY = centreY - singleFontSize / 2;
-    return {
+    result = {
       twoLine: false,
       fontSize: singleFontSize,
       platformY,
       platformW,
       platformX,
     };
+  } else {
+    // Two-line fallback: scale so last word (longer) = TWO_LINE_TARGET_FAC of canvas
+    const twoFontSize = Math.floor((canvasW * TWO_LINE_TARGET_FAC * 100) / lastW);
+    const lineH = twoFontSize * 1.15;
+    const platformW = (lastW * twoFontSize) / 100;
+    const platformX = (canvasW - platformW) / 2;
+    const platformY = centreY - lineH / 2 - twoFontSize / 2;
+    result = {
+      twoLine: true,
+      fontSize: twoFontSize,
+      platformY,
+      platformW,
+      platformX,
+    };
   }
 
-  // Two-line fallback: scale so last word (longer) = TWO_LINE_TARGET_FAC of canvas
-  const twoFontSize = Math.floor((canvasW * TWO_LINE_TARGET_FAC * 100) / lastW);
-  const lineH = twoFontSize * 1.15;
-  const platformW = (lastW * twoFontSize) / 100;
-  const platformX = (canvasW - platformW) / 2;
-  const platformY = centreY - lineH / 2 - twoFontSize / 2;
-  return {
-    twoLine: true,
-    fontSize: twoFontSize,
-    platformY,
-    platformW,
-    platformX,
-  };
+  _cachedNameW = canvasW;
+  _cachedNameH = canvasH;
+  _cachedNameLayout = result;
+  return result;
 }
 
 function drawNamePlatform(
