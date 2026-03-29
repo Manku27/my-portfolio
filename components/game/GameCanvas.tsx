@@ -81,9 +81,17 @@ export function GameCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    const dpr = window.devicePixelRatio || 1;
+    let logicalW = 0;
+    let logicalH = 0;
+
     const resize = () => {
-      canvas.width = window.innerWidth || 1280;
-      canvas.height = window.innerHeight || 720;
+      logicalW = window.innerWidth || 1280;
+      logicalH = window.innerHeight || 720;
+      canvas.width = Math.round(logicalW * dpr);
+      canvas.height = Math.round(logicalH * dpr);
+      canvas.style.width = `${logicalW}px`;
+      canvas.style.height = `${logicalH}px`;
     };
     resize();
     window.addEventListener("resize", resize);
@@ -101,14 +109,14 @@ export function GameCanvas() {
 
     const onMouseMove = (e: MouseEvent) => {
       const r = canvas.getBoundingClientRect();
-      mouseX = (e.clientX - r.left) * (canvas.width / (r.width || 1));
-      mouseY = (e.clientY - r.top) * (canvas.height / (r.height || 1));
+      mouseX = e.clientX - r.left;
+      mouseY = e.clientY - r.top;
       if (charmOpen) {
         const hit = getCharmAtPoint(
           mouseX,
           mouseY,
-          canvas.width,
-          canvas.height,
+          logicalW,
+          logicalH,
         );
         if (hit !== -1) charmSelected = hit;
       }
@@ -130,11 +138,9 @@ export function GameCanvas() {
 
     const canvasCoords = (e: MouseEvent) => {
       const r = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / (r.width || 1);
-      const scaleY = canvas.height / (r.height || 1);
       return {
-        cx: (e.clientX - r.left) * scaleX,
-        cy: (e.clientY - r.top) * scaleY,
+        cx: e.clientX - r.left,
+        cy: e.clientY - r.top,
       };
     };
 
@@ -197,8 +203,8 @@ export function GameCanvas() {
       const hit = getCharmAtPoint(
         e.clientX,
         e.clientY,
-        canvas.width,
-        canvas.height,
+        logicalW,
+        logicalH,
       );
       if (hit !== -1) {
         charmSelected = hit;
@@ -331,10 +337,10 @@ export function GameCanvas() {
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
 
-    const groundY = () => Math.round(canvas.height * GROUND_Y_FAC);
+    const groundY = () => Math.round(logicalH * GROUND_Y_FAC);
 
-    let charX = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2;
-    let charY = groundY() - getIslandY(canvas.height) - CHARACTER_H;
+    let charX = SPAWN_ROOM * logicalW + logicalW / 2 - CHARACTER_W / 2;
+    let charY = groundY() - getIslandY(logicalH) - CHARACTER_H;
     let velY = 0;
     let isGrounded = true;
     let jumpsLeft = 2;
@@ -345,6 +351,7 @@ export function GameCanvas() {
     let firstFrame = true;
 
     const loop = (timestamp: number) => {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const delta = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
       lastTimestamp = timestamp;
 
@@ -357,7 +364,7 @@ export function GameCanvas() {
 
       const ground = groundY();
       // Keep spawn island brick collision in sync with canvas height
-      bricks[0].yFromGround = getIslandY(canvas.height);
+      bricks[0].yFromGround = getIslandY(logicalH);
 
       {
         // ── Horizontal movement ─────────────────────────────────────────────
@@ -368,13 +375,13 @@ export function GameCanvas() {
         }
         charX = Math.max(
           0,
-          Math.min(ROOM_COUNT * canvas.width - CHARACTER_W, charX),
+          Math.min(ROOM_COUNT * logicalW - CHARACTER_W, charX),
         );
 
         // Room snap
         currentRoom = Math.max(
           0,
-          Math.min(ROOM_COUNT - 1, Math.floor(charX / canvas.width)),
+          Math.min(ROOM_COUNT - 1, Math.floor(charX / logicalW)),
         );
 
         // Gravity + position
@@ -390,7 +397,7 @@ export function GameCanvas() {
           CHARACTER_W,
           CHARACTER_H,
           ground,
-          canvas.width,
+          logicalW,
         );
         velY = brickResult.newVelY;
         charY = brickResult.newCharY;
@@ -403,10 +410,10 @@ export function GameCanvas() {
         // Name platform collision
         const np =
           currentRoom === 1
-            ? getNameLayout(ctx, canvas.width, canvas.height)
+            ? getNameLayout(ctx, logicalW, logicalH)
             : undefined;
         if (np && velY > 0) {
-          const npWorldX = SPAWN_ROOM * canvas.width + np.platformX;
+          const npWorldX = SPAWN_ROOM * logicalW + np.platformX;
           const hOverlap =
             charX + CHARACTER_W > npWorldX && charX < npWorldX + np.platformW;
           if (hOverlap) {
@@ -421,21 +428,21 @@ export function GameCanvas() {
         }
 
         // Gap detection — void is the middle area (0.28..0.72); ground exists only at edges
-        const spawnBase = SPAWN_ROOM * canvas.width;
+        const spawnBase = SPAWN_ROOM * logicalW;
         const localMidX = charX + CHARACTER_W / 2 - spawnBase;
         const overGap =
           currentRoom === 1 &&
-          localMidX > canvas.width * 0.28 &&
-          localMidX < canvas.width * 0.72;
+          localMidX > logicalW * 0.28 &&
+          localMidX < logicalW * 0.72;
 
         if (!overGap && charY + CHARACTER_H >= ground) {
           charY = ground - CHARACTER_H;
           velY = 0;
           isGrounded = true;
           jumpsLeft = 2;
-        } else if (overGap && charY >= canvas.height) {
+        } else if (overGap && charY >= logicalH) {
           // Fell off the bottom — respawn at top of canvas, fall onto island
-          charX = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2;
+          charX = SPAWN_ROOM * logicalW + logicalW / 2 - CHARACTER_W / 2;
           charY = -CHARACTER_H;
           velY = 0;
           isGrounded = false;
@@ -445,7 +452,7 @@ export function GameCanvas() {
         // Name glow
         let nameGlowTarget = 0;
         if (np && isGrounded && velY === 0) {
-          const npWorldX = SPAWN_ROOM * canvas.width + np.platformX;
+          const npWorldX = SPAWN_ROOM * logicalW + np.platformX;
           const hOverlap =
             charX + CHARACTER_W > npWorldX && charX < npWorldX + np.platformW;
           if (hOverlap && Math.abs(charY + CHARACTER_H - np.platformY) < 6)
@@ -456,12 +463,12 @@ export function GameCanvas() {
         // Lamp glow
         if (currentRoom === 1) {
           const dist = Math.hypot(
-            mouseX - getLampX(canvas.width, canvas.height),
+            mouseX - getLampX(logicalW, logicalH),
             mouseY -
               lampBulbY(
-                ground - getIslandY(canvas.height),
-                canvas.width,
-                canvas.height,
+                ground - getIslandY(logicalH),
+                logicalW,
+                logicalH,
               ),
           );
           lampGlow = lerp(
@@ -475,7 +482,7 @@ export function GameCanvas() {
 
         // Speech bubble — proximity triggers
         if (currentRoom === 0) {
-          const triggers = getWorkTriggers(canvas.width, ground);
+          const triggers = getWorkTriggers(logicalW, ground);
           let hit: WorkTrigger | null = null;
           for (const t of triggers) {
             if (Math.abs(charX + CHARACTER_W / 2 - t.worldX) < t.radius) {
@@ -499,7 +506,7 @@ export function GameCanvas() {
             }
           }
         } else if (currentRoom >= 2) {
-          const triggers = getTimelineTriggers(canvas.width, ground);
+          const triggers = getTimelineTriggers(logicalW, ground);
           let hit: TimelineTrigger | null = null;
           for (const t of triggers) {
             if (Math.abs(charX + CHARACTER_W / 2 - t.worldX) < t.radius) {
@@ -590,20 +597,20 @@ export function GameCanvas() {
 
       // ── Draw ──────────────────────────────────────────────────────────────
       {
-        const cameraX = currentRoom * canvas.width;
+        const cameraX = currentRoom * logicalW;
         const screenX = charX - cameraX;
-        drawRoomBackground(ctx, currentRoom, canvas.width, canvas.height);
-        drawParallaxBackground(ctx, charX, canvas.width, canvas.height, ground);
+        drawRoomBackground(ctx, currentRoom, logicalW, logicalH);
+        drawParallaxBackground(ctx, charX, logicalW, logicalH, ground);
         drawRoomEnvironment(
           ctx,
           currentRoom,
-          canvas.width,
-          canvas.height,
+          logicalW,
+          logicalH,
           ground,
           lampGlow,
           nameGlow,
           currentRoom === 1
-            ? getNameLayout(ctx, canvas.width, canvas.height)
+            ? getNameLayout(ctx, logicalW, logicalH)
             : undefined,
           currentRoom === 1 ? spawnAssets : undefined,
         );
@@ -612,30 +619,30 @@ export function GameCanvas() {
           bricks,
           cameraX,
           ground,
-          canvas.width,
+          logicalW,
           platImg,
-          canvas.height,
+          logicalH,
         );
         if (currentRoom === 1)
-          drawParticles(ctx, particles, canvas.width, canvas.height, time);
+          drawParticles(ctx, particles, logicalW, logicalH, time);
         if (currentRoom === 1) {
           // Clip grass to the two ground sections — no grass over the void
           ctx.save();
           ctx.beginPath();
-          ctx.rect(0, 0, canvas.width * 0.28, canvas.height);
-          ctx.rect(canvas.width * 0.72, 0, canvas.width * 0.28, canvas.height);
+          ctx.rect(0, 0, logicalW * 0.28, logicalH);
+          ctx.rect(logicalW * 0.72, 0, logicalW * 0.28, logicalH);
           ctx.clip();
-          drawParallaxForeground(ctx, canvas.width, ground, time, grassImgs);
+          drawParallaxForeground(ctx, logicalW, ground, time, grassImgs);
           ctx.restore();
         } else {
-          drawParallaxForeground(ctx, canvas.width, ground, time, grassImgs);
+          drawParallaxForeground(ctx, logicalW, ground, time, grassImgs);
         }
         if (currentRoom === 1)
           drawSpawnBench(
             ctx,
-            canvas.width,
-            canvas.height,
-            ground - getIslandY(canvas.height),
+            logicalW,
+            logicalH,
+            ground - getIslandY(logicalH),
             spawnAssets.benchImg,
           );
         drawCharacter(
@@ -654,8 +661,8 @@ export function GameCanvas() {
           ctx,
           bubbleContent,
           bubbleProgress,
-          canvas.width,
-          canvas.height,
+          logicalW,
+          logicalH,
           bubblePage,
         );
       }
@@ -664,8 +671,8 @@ export function GameCanvas() {
       if (charmProgress > 0.01) {
         drawCharmMenu(
           ctx,
-          canvas.width,
-          canvas.height,
+          logicalW,
+          logicalH,
           charmProgress,
           charmSelected,
         );
@@ -673,7 +680,7 @@ export function GameCanvas() {
 
       // Skill bar — work world only, fades when dialogue opens
       if (currentRoom === 0) {
-        drawSkillBar(ctx, canvas.width, canvas.height, bubbleProgress);
+        drawSkillBar(ctx, logicalW, logicalH, bubbleProgress);
       }
 
       // Social HUD — always on top, fixed screen-space, no world offset
@@ -689,9 +696,9 @@ export function GameCanvas() {
           }
         }
         if (hintsVisible) {
-          const cx = canvas.width / 2;
-          const uiSc = Math.min(1.4, Math.max(0.85, canvas.width / 1400));
-          const r2y = canvas.height - Math.round(32 * uiSc);
+          const cx = logicalW / 2;
+          const uiSc = Math.min(1.4, Math.max(0.85, logicalW / 1400));
+          const r2y = logicalH - Math.round(32 * uiSc);
           const r1y = r2y - Math.round(24 * uiSc);
           ctx.font = `400 15px 'Perpetua', serif`;
           ctx.textAlign = "center";
@@ -710,7 +717,7 @@ export function GameCanvas() {
 
       // ── Full-screen image viewer — topmost layer ─────────────────────────────
       if (viewerOpen()) {
-        const rects = drawImageViewer(ctx, canvas.width, canvas.height, viewerSrc!);
+        const rects = drawImageViewer(ctx, logicalW, logicalH, viewerSrc!);
         viewerClose = rects.close;
       }
 
@@ -820,19 +827,19 @@ export function GameCanvas() {
       const gnd = groundY();
 
       if (id === "home") {
-        charX = SPAWN_ROOM * canvas.width + canvas.width / 2 - CHARACTER_W / 2;
+        charX = SPAWN_ROOM * logicalW + logicalW / 2 - CHARACTER_W / 2;
         charY = -CHARACTER_H * 3;
         velY = 0;
         isGrounded = false;
         jumpsLeft = 1;
       } else if (id === "work") {
-        charX = 0 * canvas.width + canvas.width * 0.5 - CHARACTER_W / 2;
+        charX = 0 * logicalW + logicalW * 0.5 - CHARACTER_W / 2;
         charY = -CHARACTER_H * 3;
         velY = 0;
         isGrounded = false;
         jumpsLeft = 1;
       } else if (id === "timeline") {
-        charX = 2 * canvas.width + canvas.width * 0.5 - CHARACTER_W / 2;
+        charX = 2 * logicalW + logicalW * 0.5 - CHARACTER_W / 2;
         charY = -CHARACTER_H * 3;
         velY = 0;
         isGrounded = false;
