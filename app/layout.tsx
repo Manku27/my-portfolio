@@ -109,7 +109,11 @@ export const metadata: Metadata = {
   applicationName: "Mayank Jhunjhunwala Portfolio",
   category: "technology",
   openGraph: {
-    type: "website",
+    type: "profile",
+    firstName: "Mayank",
+    lastName: "Jhunjhunwala",
+    username: "Manku27",
+    gender: "Male",
     locale: "en_US",
     url: BASE_URL,
     siteName: "Mayank Jhunjhunwala",

@@ -4,7 +4,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: 'https://manku27.dev',
-      lastModified: new Date(),
+      lastModified: new Date('2026-04-11'),
       changeFrequency: 'monthly',
       priority: 1,
     },
