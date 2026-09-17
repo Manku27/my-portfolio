@@ -10,6 +10,7 @@ import type {
   ConsultingEngagement,
   TimelineEntry,
   Project,
+  ActivityItem,
 } from "@/lib/types";
 
 // ─── Content type ─────────────────────────────────────────────────────────────
@@ -71,6 +72,32 @@ export function timelineToBubble(e: TimelineEntry): BubbleContent {
     media:       media.length > 0 ? media : undefined,
     bullets:     e.tags ?? [],
   };
+}
+
+const ACTIVITY_TYPE_LABEL: Record<ActivityItem['type'], string> = {
+  movie: 'Movie',
+  tv_show: 'TV Show',
+  video_game: 'Game',
+  book: 'Book',
+  post: 'Bluesky Post',
+}
+
+export function activityToBubble(item: ActivityItem): BubbleContent {
+  const media: BubbleMediaItem[] = []
+  if (item.posterUrl) media.push({ type: 'image', src: item.posterUrl })
+
+  const typeLine = ACTIVITY_TYPE_LABEL[item.type]
+    + (item.rating ? ` · ${item.rating}/10` : '')
+    + (item.status === 'in_progress' ? ' · in progress' : '')
+
+  return {
+    title: item.title,
+    role: typeLine,
+    meta: item.credit ? `${item.creditRole ?? ''}: ${item.credit}` : undefined,
+    description: item.review,
+    media: media.length > 0 ? media : undefined,
+    bullets: item.genres,
+  }
 }
 
 export function pavilionToBubble(

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import MobileGameCanvas from './MobileGameCanvas'
 import MobileSocialsHUD from './MobileSocialsHUD'
 import MobileSkillsHUD from './MobileSkillsHUD'
+import BookGate from '@/components/BookGate'
 import { profile } from '@/lib/data'
 
 // Kept for compatibility with ModeSelect.tsx and EndScreen.tsx
@@ -11,6 +12,7 @@ export type GameMode = 'career' | 'timeline' | 'about'
 
 export default function MobileGame() {
   const [docked, setDocked] = useState(false)
+  const [bookOpen, setBookOpen] = useState(false)
 
   return (
     <div
@@ -22,9 +24,10 @@ export default function MobileGame() {
         touchAction: 'none',
       }}
     >
-      <MobileSkillsHUD visible={true} />
+      <MobileSkillsHUD visible={true} onOpenBook={() => setBookOpen(true)} />
       <MobileGameCanvas onDockedChange={setDocked} />
       <MobileSocialsHUD socials={profile.socials} />
+      <BookGate open={bookOpen} onOpenChange={setBookOpen} />
     </div>
   )
 }

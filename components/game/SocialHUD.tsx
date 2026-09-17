@@ -12,6 +12,10 @@ const R = 22; // base icon circle radius in px
 const ICON_STEP = 52; // px between circle centres — fixed, not tied to frame width
 const ARM_START_X = PAD + HUD_H * 1.22; // ≈120px from left
 const RESUME_GAP = 18; // extra px gap before resume button separates it visually
+const LABEL_GAP = 10; // px between an icon and its text label
+const GROUP_GAP = 26; // px after a label block, before the next icon
+const RESUME_LABEL_W = 66; // reserved width for "Resume" text
+const BOOK_LABEL_W = 150; // reserved width for the book's two-line label
 
 // Per-icon image scale — only affects the image drawn inside the circle.
 // Circle size, border, and hit area are always R for every icon.
@@ -32,6 +36,9 @@ const ICON_SRCS: readonly string[] = [
 // Resume button is index SOCIAL_COUNT in hit-test results
 export const SOCIAL_COUNT = ICON_SRCS.length; // 7 — resume hit returns this index
 
+// Book button is index SOCIAL_COUNT + 1 in hit-test results
+export const BOOK_HUD_INDEX = SOCIAL_COUNT + 1;
+
 function getExperience(): string {
   const start = new Date(2020, 10, 1) // November 2020
   const now = new Date()
@@ -51,6 +58,10 @@ interface HudLayout {
   icons: Array<{ cx: number; cy: number }>;
   resumeCx: number;
   resumeCy: number;
+  resumeLabelX: number;
+  bookCx: number;
+  bookCy: number;
+  bookLabelX: number;
 }
 
 // Recomputed each call — cheap Map lookup + arithmetic, safe inside render loop.
@@ -75,8 +86,14 @@ function getLayout(): HudLayout {
   const resumeCx =
     ARM_START_X + ICON_SRCS.length * ICON_STEP + RESUME_GAP;
   const resumeCy = cy;
+  const resumeLabelX = resumeCx + R + LABEL_GAP;
 
-  return { frameX, frameY, frameW, frameH, icons, resumeCx, resumeCy };
+  // Book button: past resume's icon + label block
+  const bookCx = resumeLabelX + RESUME_LABEL_W + GROUP_GAP + R;
+  const bookCy = cy;
+  const bookLabelX = bookCx + R + LABEL_GAP;
+
+  return { frameX, frameY, frameW, frameH, icons, resumeCx, resumeCy, resumeLabelX, bookCx, bookCy, bookLabelX };
 }
 
 // ── Draw — canvas document/scroll icon ────────────────────────────────────────
@@ -121,17 +138,63 @@ function drawDocumentIcon(
   ctx.fillRect(lineX, y + h * 0.62, lineW * 0.75, lineH);
 }
 
+// ── Draw — canvas book icon ─────────────────────────────────────────────────────
+function drawBookIcon(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  hovered: boolean,
+): void {
+  const w = R * 0.80;
+  const h = R * 0.92;
+  const x = cx - w / 2;
+  const y = cy - h / 2;
+  const spine = w * 0.22;
+
+  // Cover
+  ctx.fillStyle = hovered ? "rgba(220,240,232,0.95)" : "rgba(210,235,225,0.82)";
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 2);
+  ctx.fill();
+
+  // Spine — darker vertical band near the left edge
+  ctx.fillStyle = hovered ? "rgba(60,140,110,0.55)" : "rgba(60,140,110,0.40)";
+  ctx.fillRect(x, y, spine, h);
+
+  // Page lines — teal tint to hint at content
+  ctx.fillStyle = "rgba(50,120,95,0.65)";
+  const lineH = h * 0.10;
+  const lineW = w * 0.5;
+  const lineX = x + spine + w * 0.12;
+  ctx.fillRect(lineX, y + h * 0.30, lineW, lineH);
+  ctx.fillRect(lineX, y + h * 0.48, lineW * 0.75, lineH);
+  ctx.fillRect(lineX, y + h * 0.66, lineW * 0.9, lineH);
+
+  // Bookmark ribbon — small teal triangle notch at the top-right
+  ctx.fillStyle = hovered ? "rgba(120,240,200,0.95)" : "rgba(80,200,160,0.75)";
+  const ribbonW = w * 0.16;
+  const ribbonX = x + w - ribbonW * 1.8;
+  ctx.beginPath();
+  ctx.moveTo(ribbonX, y);
+  ctx.lineTo(ribbonX + ribbonW, y);
+  ctx.lineTo(ribbonX + ribbonW / 2, y + h * 0.22);
+  ctx.closePath();
+  ctx.fill();
+}
+
 // ── Public: hit test ───────────────────────────────────────────────────────────
 // Returns 0-6 for social icons, SOCIAL_COUNT (7) for resume button, -1 for miss.
 
 export function getSocialHudHit(mouseX: number, mouseY: number): number {
-  const { icons, resumeCx, resumeCy } = getLayout();
+  const { icons, resumeCx, resumeCy, bookCx, bookCy } = getLayout();
   for (let i = 0; i < icons.length; i++) {
     if (Math.hypot(mouseX - icons[i].cx, mouseY - icons[i].cy) <= R + 4)
       return i;
   }
   if (Math.hypot(mouseX - resumeCx, mouseY - resumeCy) <= R + 4)
     return SOCIAL_COUNT;
+  if (Math.hypot(mouseX - bookCx, mouseY - bookCy) <= R + 4)
+    return BOOK_HUD_INDEX;
   return -1;
 }
 
@@ -149,7 +212,7 @@ export function drawSocialHUD(
   mouseY:      number,
   currentRoom: number = -1,
 ): void {
-  const { frameX, frameY, frameW, frameH, icons, resumeCx, resumeCy } =
+  const { frameX, frameY, frameW, frameH, icons, resumeCx, resumeCy, resumeLabelX, bookCx, bookCy, bookLabelX } =
     getLayout();
 
   // HUD frame sprite
@@ -221,9 +284,48 @@ export function drawSocialHUD(
   // Document icon drawn in canvas
   drawDocumentIcon(ctx, resumeCx, resumeCy, resumeHovered);
 
+  // Label — always visible, not just on hover, so the button reads at a glance
+  ctx.font = `700 13px 'Trajan Pro', serif`;
+  ctx.fillStyle = resumeHovered ? "rgba(240,210,100,0.98)" : "rgba(220,190,100,0.85)";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText("Resume", resumeLabelX, resumeCy);
+
+  // ── Book button ────────────────────────────────────────────────────────────
+  const bookHovered = Math.hypot(mouseX - bookCx, mouseY - bookCy) <= R + 4;
+
+  // Circle background
+  ctx.beginPath();
+  ctx.arc(bookCx, bookCy, R, 0, Math.PI * 2);
+  ctx.fillStyle = bookHovered
+    ? "rgba(8, 24, 20, 0.95)"
+    : "rgba(8, 20, 18, 0.82)";
+  ctx.fill();
+
+  // Teal border — distinguishes the book button from resume's gold
+  ctx.beginPath();
+  ctx.arc(bookCx, bookCy, R, 0, Math.PI * 2);
+  ctx.strokeStyle = bookHovered
+    ? "rgba(120, 240, 200, 0.95)"
+    : "rgba(80, 200, 160, 0.70)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  drawBookIcon(ctx, bookCx, bookCy, bookHovered);
+
+  // Two-line label — book title + tech stack, always visible
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.font = `700 12px 'Trajan Pro', serif`;
+  ctx.fillStyle = bookHovered ? "rgba(140,245,205,0.98)" : "rgba(120,235,190,0.85)";
+  ctx.fillText("What Runs When", bookLabelX, bookCy - 7);
+  ctx.font = `400 10px 'Perpetua', serif`;
+  ctx.fillStyle = "rgba(160,200,180,0.60)";
+  ctx.fillText("Next.js · React.js", bookLabelX, bookCy + 8);
+
   // ── Experience badge — work world only, display-only ─────────────────────
   if (currentRoom === 0) {
-    const expX = resumeCx + R + 28
+    const expX = bookLabelX + BOOK_LABEL_W + GROUP_GAP
     const expY = resumeCy
     ctx.font         = `700 13px 'Trajan Pro', serif`
     ctx.fillStyle    = 'rgba(220,190,100,0.90)'

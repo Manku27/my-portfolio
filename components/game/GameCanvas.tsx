@@ -14,6 +14,7 @@ import {
   getNameLayout,
   getLampX,
   lampBulbY,
+  ACTIVITY_ROOM_OFFSET,
   type SpawnAssets,
 } from "./Room";
 import { getWorkTriggers, drawSkillBar, type WorkTrigger } from "./WorkRoom";
@@ -21,8 +22,13 @@ import {
   getTimelineTriggers,
   type TimelineTrigger,
   POLE_SRCS,
-  TIMELINE_ROOM_COUNT,
 } from "./TimelineRoom";
+import {
+  getActivityRoomCount,
+  getActivityTriggers,
+  type ActivityTrigger,
+} from "./ActivityRoom";
+import type { ActivityItem } from "@/lib/types";
 import {
   drawSpeechBubble,
   getLastBubbleBtnRects,
@@ -59,6 +65,7 @@ import {
   getSocialHudHit,
   getSocialUrl,
   SOCIAL_COUNT,
+  BOOK_HUD_INDEX,
 } from "./SocialHUD";
 import { profile } from "@/lib/data/profile";
 
@@ -84,20 +91,35 @@ const GRAVITY = 1800; // px/s²
 const JUMP_VEL = 920; // px/s upward
 // Ground sits at 88% of canvas height — scales with screen size
 const GROUND_Y_FAC = 0.88;
-const ROOM_COUNT = 2 + TIMELINE_ROOM_COUNT; // 0=work, 1=spawn, 2..N=timeline (auto-expands with data)
 const SPAWN_ROOM = 1;
 
 const LAMP_HOVER_RADIUS = 70; // px — distance at which lamp starts glowing
 
-export function GameCanvas() {
+interface Props {
+  activity: ActivityItem[];
+  onOpenBookGate?: () => void;
+}
+
+export function GameCanvas({ activity, onOpenBookGate }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState(true);
+
+  // Kept in a ref so the heavy setup effect below doesn't need to depend on
+  // (and re-run for) every re-render of an inline callback from the parent.
+  const onOpenBookGateRef = useRef(onOpenBookGate);
+  useEffect(() => {
+    onOpenBookGateRef.current = onOpenBookGate;
+  }, [onOpenBookGate]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    // 0=work, 1=spawn, 2..ACTIVITY_ROOM_OFFSET-1=timeline, then activity
+    // (both auto-expand with data — see TimelineRoom/ActivityRoom)
+    const ROOM_COUNT = ACTIVITY_ROOM_OFFSET + getActivityRoomCount(activity);
 
     const dpr = window.devicePixelRatio || 1;
     let logicalW = 0;
@@ -220,6 +242,8 @@ export function GameCanvas() {
           // Gmail — copy email to clipboard
           navigator.clipboard.writeText(profile.email ?? "").catch(() => {});
           showToast("Email copied!");
+        } else if (hudHit === BOOK_HUD_INDEX) {
+          onOpenBookGateRef.current?.();
         } else {
           const url = getSocialUrl(hudHit);
           if (url) window.open(url, "_blank", "noopener,noreferrer");
@@ -524,9 +548,33 @@ export function GameCanvas() {
               bubbleContent = null;
             }
           }
-        } else if (currentRoom >= 2) {
+        } else if (currentRoom >= 2 && currentRoom < ACTIVITY_ROOM_OFFSET) {
           const triggers = getTimelineTriggers(logicalW, ground);
           let hit: TimelineTrigger | null = null;
+          for (const t of triggers) {
+            if (Math.abs(charX + CHARACTER_W / 2 - t.worldX) < t.radius) {
+              hit = t;
+              break;
+            }
+          }
+          if (hit) {
+            if (hit.id !== activeBubbleId) {
+              bubblePage = 0;
+              activeBubbleId = hit.id;
+            }
+            bubbleContent = hit.content;
+            bubbleProgress = Math.min(1, bubbleProgress + delta * 1.8);
+          } else {
+            bubbleProgress = Math.max(0, bubbleProgress - delta * 2.5);
+            if (bubbleProgress <= 0) {
+              bubblePage = 0;
+              activeBubbleId = null;
+              bubbleContent = null;
+            }
+          }
+        } else if (currentRoom >= ACTIVITY_ROOM_OFFSET) {
+          const triggers = getActivityTriggers(activity, ACTIVITY_ROOM_OFFSET, logicalW, ground);
+          let hit: ActivityTrigger | null = null;
           for (const t of triggers) {
             if (Math.abs(charX + CHARACTER_W / 2 - t.worldX) < t.radius) {
               hit = t;
@@ -632,6 +680,7 @@ export function GameCanvas() {
             ? getNameLayout(ctx, logicalW, logicalH)
             : undefined,
           currentRoom === 1 ? spawnAssets : undefined,
+          activity,
         );
         drawBricks(ctx, bricks, cameraX, ground, logicalW, platImg, logicalH);
         if (currentRoom === 1)
@@ -868,6 +917,7 @@ export function GameCanvas() {
         ["/sprites/charms/Home_charm.png", () => {}],
         ["/sprites/charms/Work_charm.png", () => {}],
         ["/sprites/charms/Timeline__charm.png", () => {}],
+        ["/sprites/charms/Activity_charm.png", () => {}],
         // Work room logos
         ["/sprites/work/merkle.webp", () => {}],
         ["/sprites/work/Tech_Mahindra.png", () => {}],
@@ -888,6 +938,10 @@ export function GameCanvas() {
 
       // ── Tier 3: timeline pole sprites (after work room) ────────────────────
       await Promise.all(POLE_SRCS.map((src) => loadImage(src).catch(() => {})));
+
+      // ── Tier 4: activity poster art — best-effort, doesn't block first paint ─
+      const posterUrls = activity.map((a) => a.posterUrl).filter((u): u is string => !!u);
+      Promise.all(posterUrls.map((src) => loadImage(src).catch(() => {})));
     };
     // Charm routing — handle hash navigation from charm menu
     const navigateToCharm = (id: string) => {
@@ -912,8 +966,13 @@ export function GameCanvas() {
         velY = 0;
         isGrounded = false;
         jumpsLeft = 1;
+      } else if (id === "activity" && getActivityRoomCount(activity) > 0) {
+        charX = ACTIVITY_ROOM_OFFSET * logicalW + logicalW * 0.5 - CHARACTER_W / 2;
+        charY = -CHARACTER_H * 3;
+        velY = 0;
+        isGrounded = false;
+        jumpsLeft = 1;
       }
-      // books, movies, writing, games — worlds not yet built, no-op for now
     };
 
     const onHashChange = () => {
@@ -937,7 +996,7 @@ export function GameCanvas() {
       window.removeEventListener("hashchange", onHashChange);
       audioCleanupRef.current?.();
     };
-  }, []);
+  }, [activity]);
 
   return (
     <>

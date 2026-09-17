@@ -1,15 +1,18 @@
-import { GameCanvas } from '@/components/game/GameCanvas'
-import { GameErrorBoundary } from '@/components/ErrorBoundary'
 import MobileRedirect from '@/components/MobileRedirect'
+import ActivityPanel from '@/components/ActivityPanel'
+import GameShell from '@/components/GameShell'
 import {
   profile,
   workExperience,
   projects,
   certifications,
   education,
+  getActivity,
 } from '@/lib/data/index'
 
-export default function Home() {
+export default async function Home() {
+  const activity = await getActivity()
+
   return (
     <>
       {/* Crawlable content layer — visually hidden, readable by search engines.
@@ -95,12 +98,30 @@ export default function Home() {
             </article>
           ))}
         </section>
+
+        {activity.length > 0 && (
+          <section aria-labelledby="activity-heading">
+            <h2 id="activity-heading">Activity</h2>
+            {activity.map((a) => (
+              <article key={a.id}>
+                <h3>{a.title}</h3>
+                <p>{a.type} · {a.status}{a.rating ? ` · ${a.rating}/10` : ''}</p>
+                {a.genres.length > 0 && (
+                  <ul>
+                    {a.genres.map((g) => <li key={g}>{g}</li>)}
+                  </ul>
+                )}
+                {a.credit && <p>{a.creditRole}: {a.credit}</p>}
+                {a.review && <p>{a.review}</p>}
+              </article>
+            ))}
+          </section>
+        )}
       </main>
 
       <MobileRedirect />
-      <GameErrorBoundary>
-        <GameCanvas />
-      </GameErrorBoundary>
+      <GameShell activity={activity} />
+      <ActivityPanel activity={activity} />
     </>
   )
 }

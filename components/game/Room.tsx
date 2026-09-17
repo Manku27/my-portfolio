@@ -1,10 +1,15 @@
 // Room rendering — two-phase draw so parallax layers sit between bg and environment.
-import { drawTimelineRoom } from "./TimelineRoom";
+import { drawTimelineRoom, TIMELINE_ROOM_COUNT } from "./TimelineRoom";
 import { drawWorkRoom } from "./WorkRoom";
+import { drawActivityRoom } from "./ActivityRoom";
 import { profile } from "@/lib/data/index";
 import { getImage } from "@/utils/loadAssets";
 import { getIslandY } from "./Bricks";
-// roomIndex: 0 = work (left), 1 = spawn (centre), 2 = timeline (right)
+import type { ActivityItem } from "@/lib/types";
+// roomIndex: 0 = work (left), 1 = spawn (centre), 2 = timeline, 2+N = activity (right)
+
+// First room index used by the activity world — after all timeline rooms.
+export const ACTIVITY_ROOM_OFFSET = 2 + TIMELINE_ROOM_COUNT;
 
 const ROOM_TINTS = ["#070a06", "#050a0a", "#050d0a", "#05080e"];
 
@@ -615,6 +620,7 @@ export function drawRoomEnvironment(
   nameGlow = 0,
   nameLayout?: NameLayout,
   spawnAssets?: SpawnAssets,
+  activity: ActivityItem[] = [],
 ): void {
   // Ground plane — left section (0..w*0.28) and right section (w*0.72..end)
   if (roomIndex === 1) {
@@ -677,9 +683,14 @@ export function drawRoomEnvironment(
     drawWorkRoom(ctx, canvasWidth, groundY);
   }
 
-  // Timeline rooms — 2, 3, 4
-  if (roomIndex >= 2) {
+  // Timeline rooms — 2 .. ACTIVITY_ROOM_OFFSET-1
+  if (roomIndex >= 2 && roomIndex < ACTIVITY_ROOM_OFFSET) {
     drawTimelineRoom(ctx, roomIndex, canvasWidth, groundY);
+  }
+
+  // Activity rooms — ACTIVITY_ROOM_OFFSET onward (auto-expands with data)
+  if (roomIndex >= ACTIVITY_ROOM_OFFSET) {
+    drawActivityRoom(ctx, activity, roomIndex, ACTIVITY_ROOM_OFFSET, canvasWidth, groundY);
   }
 }
 

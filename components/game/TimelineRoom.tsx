@@ -23,7 +23,7 @@ export const POLE_SRCS = [
 const POLE_DISPLAY_W = 64
 
 /** Draw a pole sprite (or fallback rect) from groundY up by poleH px, centred on x. */
-function drawPoleSprite(
+export function drawPoleSprite(
   ctx:       CanvasRenderingContext2D,
   poleIndex: number,
   x:         number,

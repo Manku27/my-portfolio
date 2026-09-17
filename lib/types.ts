@@ -135,54 +135,29 @@ export interface Video {
 }
 
 // ------------------------------------------------------------
-// Books — /books
+// Activity — sourced from Popfeed (social.popfeed.feed.listItem + feed.review)
 // ------------------------------------------------------------
 
-export interface Book {
-  id: string
+export type ActivityType = 'movie' | 'tv_show' | 'video_game' | 'book' | 'post'
+
+export type ActivityStatus = 'in_progress' | 'completed'
+
+export interface ActivityItem {
+  id: string                    // atproto record key (rkey) of the listItem
+  type: ActivityType
   title: string
-  author: string
-  coverUrl?: string
-  rating?: Rating
-  review?: string
-  dateRead?: string            // ISO date string
-  genre: string[]
-  goodreadsId?: string         // for dedup during scrape
-}
-
-// ------------------------------------------------------------
-// Movies — /movies
-// ------------------------------------------------------------
-
-export interface Movie {
-  id: string
-  title: string
-  year: number
+  genres: string[]
   posterUrl?: string
-  rating?: Rating
-  review?: string
-  dateWatched?: string         // ISO date string
-  genre: string[]
-  director?: string
-  imdbId?: string              // for dedup during scrape
-}
-
-// ------------------------------------------------------------
-// Games — /games
-// ------------------------------------------------------------
-
-export type GameStatus = 'playing' | 'completed' | 'dropped'
-
-export interface Game {
-  id: string
-  title: string
-  platform: string
-  coverUrl?: string
-  status: GameStatus
-  rating?: Rating
-  review?: string
-  dateStarted?: string         // ISO date string
-  dateFinished?: string        // ISO date string
+  backdropUrl?: string
+  releaseDate?: string          // ISO date, from source metadata
+  addedAt: string                // ISO date, when logged in Popfeed
+  status: ActivityStatus         // derived from listType
+  credit?: string                 // director / author / network — meaning varies by type
+  creditRole?: string             // literal role string from Popfeed, e.g. "director", "author", "Network"
+  identifiers?: Record<string, string>   // imdbId, tmdbId, isbn13, steamId, igdbId, atUri — sparse, varies by type
+  rating?: Rating                 // only present if a review was also written
+  review?: string                  // only present if a review was also written
+  containsSpoilers?: boolean
 }
 
 // ------------------------------------------------------------

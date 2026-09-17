@@ -22,11 +22,13 @@ import {
 import { wrapText } from '@/utils/wrapText'
 import { loadImage, getImage } from '@/utils/loadAssets'
 import { workExperience, consultingEngagements, projects } from '@/lib/data'
+import { SKILLS_HUD_H } from './MobileSkillsHUD'
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 const GROUND_Y_FAC   = 0.84   // ground as fraction of screen height
-const DOCK_SCREEN_Y  = 0.62   // active platform surface appears at this fraction when docked
-const BUBBLE_TOP     = 60     // px — just below the skills bar
+const DOCK_SCREEN_Y  = 0.68   // active platform surface appears at this fraction when docked —
+                               // lower than it looks, so the stacked platforms above it clear the top bar
+const BUBBLE_TOP     = SKILLS_HUD_H + 8   // px — just below the skills bar + resume/book row
 const GRAVITY        = 2100
 const JUMP_VY        = -1150  // apex ≈ 315px above launch
 const FALL_VY        = 220    // initial downward nudge when falling to lower platform
