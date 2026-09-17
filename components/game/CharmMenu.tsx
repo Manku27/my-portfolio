@@ -6,7 +6,6 @@ import { getImage } from '@/utils/loadAssets'
 const CHARMS: Array<{ id: string; label: string; color: string; img: string }> = [
   { id: 'home',     label: 'Home',     color: '#d0e8e0', img: '/sprites/charms/Home_charm.png'       },
   { id: 'work',     label: 'Work',     color: '#c89030', img: '/sprites/charms/Work_charm.png'       },
-  { id: 'timeline', label: 'Timeline', color: '#30c8a0', img: '/sprites/charms/Timeline__charm.png'  },
   { id: 'activity', label: 'Activity', color: '#c8305a', img: '/sprites/charms/Activity_charm.png'  },
 ]
 

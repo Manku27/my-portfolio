@@ -18,11 +18,7 @@ import {
   type SpawnAssets,
 } from "./Room";
 import { getWorkTriggers, drawSkillBar, type WorkTrigger } from "./WorkRoom";
-import {
-  getTimelineTriggers,
-  type TimelineTrigger,
-  POLE_SRCS,
-} from "./TimelineRoom";
+import { POLE_SRCS } from "./TimelineRoom";
 import {
   getActivityRoomCount,
   getActivityTriggers,
@@ -117,8 +113,8 @@ export function GameCanvas({ activity, onOpenBookGate }: Props) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // 0=work, 1=spawn, 2..ACTIVITY_ROOM_OFFSET-1=timeline, then activity
-    // (both auto-expand with data — see TimelineRoom/ActivityRoom)
+    // 0=work, 1=spawn, 2=work (mirrored, right side), then activity
+    // (activity auto-expands with data — see ActivityRoom)
     const ROOM_COUNT = ACTIVITY_ROOM_OFFSET + getActivityRoomCount(activity);
 
     const dpr = window.devicePixelRatio || 1;
@@ -524,35 +520,14 @@ export function GameCanvas({ activity, onOpenBookGate }: Props) {
         }
 
         // Speech bubble — proximity triggers
-        if (currentRoom === 0) {
+        if (currentRoom === 0 || currentRoom === 2) {
+          // Room 2 mirrors room 0's work content — translate charX into the
+          // same local (0..logicalW) space getWorkTriggers works in.
+          const localCharX = charX - currentRoom * logicalW;
           const triggers = getWorkTriggers(logicalW, ground);
           let hit: WorkTrigger | null = null;
           for (const t of triggers) {
-            if (Math.abs(charX + CHARACTER_W / 2 - t.worldX) < t.radius) {
-              hit = t;
-              break;
-            }
-          }
-          if (hit) {
-            if (hit.id !== activeBubbleId) {
-              bubblePage = 0;
-              activeBubbleId = hit.id;
-            }
-            bubbleContent = hit.content;
-            bubbleProgress = Math.min(1, bubbleProgress + delta * 1.8);
-          } else {
-            bubbleProgress = Math.max(0, bubbleProgress - delta * 2.5);
-            if (bubbleProgress <= 0) {
-              bubblePage = 0;
-              activeBubbleId = null;
-              bubbleContent = null;
-            }
-          }
-        } else if (currentRoom >= 2 && currentRoom < ACTIVITY_ROOM_OFFSET) {
-          const triggers = getTimelineTriggers(logicalW, ground);
-          let hit: TimelineTrigger | null = null;
-          for (const t of triggers) {
-            if (Math.abs(charX + CHARACTER_W / 2 - t.worldX) < t.radius) {
+            if (Math.abs(localCharX + CHARACTER_W / 2 - t.worldX) < t.radius) {
               hit = t;
               break;
             }
@@ -733,7 +708,7 @@ export function GameCanvas({ activity, onOpenBookGate }: Props) {
       }
 
       // Skill bar — work world only, fades when dialogue opens
-      if (currentRoom === 0) {
+      if (currentRoom === 0 || currentRoom === 2) {
         drawSkillBar(ctx, logicalW, logicalH, bubbleProgress);
       }
 

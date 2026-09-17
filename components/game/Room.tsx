@@ -1,15 +1,16 @@
 // Room rendering — two-phase draw so parallax layers sit between bg and environment.
-import { drawTimelineRoom, TIMELINE_ROOM_COUNT } from "./TimelineRoom";
 import { drawWorkRoom } from "./WorkRoom";
 import { drawActivityRoom } from "./ActivityRoom";
 import { profile } from "@/lib/data/index";
 import { getImage } from "@/utils/loadAssets";
 import { getIslandY } from "./Bricks";
 import type { ActivityItem } from "@/lib/types";
-// roomIndex: 0 = work (left), 1 = spawn (centre), 2 = timeline, 2+N = activity (right)
+// roomIndex: 0 = work (left), 1 = spawn (centre), 2 = work mirrored (right), 3+ = activity
 
-// First room index used by the activity world — after all timeline rooms.
-export const ACTIVITY_ROOM_OFFSET = 2 + TIMELINE_ROOM_COUNT;
+// First room index used by the activity world — right after the mirrored work room.
+// (The Diary/Timeline room used to sit here — retired for now; see git history
+// to bring it back.)
+export const ACTIVITY_ROOM_OFFSET = 3;
 
 const ROOM_TINTS = ["#070a06", "#050a0a", "#050d0a", "#05080e"];
 
@@ -573,8 +574,8 @@ function drawSpawnSignposts(
     drawSignSprite(
       sign2Img,
       w * 0.86,
-      ["The Diary"],
-      "What have I been up to? →",
+      profile.title.split(" "),
+      "The Work →",
     );
   } else {
     drawSignpost(
@@ -582,8 +583,8 @@ function drawSpawnSignposts(
       w * 0.86,
       groundY,
       90,
-      "The Diary",
-      "What have I been up to? →",
+      profile.title,
+      "The Work →",
       "right",
       fs,
     );
@@ -678,14 +679,9 @@ export function drawRoomEnvironment(
     ctx.fillRect(0, groundY, canvasWidth, 2);
   }
 
-  // Work room — room 0
-  if (roomIndex === 0) {
+  // Work room — room 0 (left) and its mirror at room 2 (right)
+  if (roomIndex === 0 || roomIndex === 2) {
     drawWorkRoom(ctx, canvasWidth, groundY);
-  }
-
-  // Timeline rooms — 2 .. ACTIVITY_ROOM_OFFSET-1
-  if (roomIndex >= 2 && roomIndex < ACTIVITY_ROOM_OFFSET) {
-    drawTimelineRoom(ctx, roomIndex, canvasWidth, groundY);
   }
 
   // Activity rooms — ACTIVITY_ROOM_OFFSET onward (auto-expands with data)
