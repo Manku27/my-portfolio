@@ -15,7 +15,8 @@ export const workExperience: WorkExperience[] = [
       'Integrated a multi-system backend across AWS AppSync, a property management system (PMS), and SynXis for real-time pricing and availability data.',
       'Designed Cloudinary-based Digital Asset Management workflows with Contentful content delivery, deployed on Vercel.',
       'Owned GTM implementation and full analytics instrumentation alongside frontend and backend delivery.',
-      'Selected as part of a small global group identifying AI agent use-cases across the software development lifecycle.',
+      'Leading a development tribe in an org-wide initiative to implement billable AI agents across the SDLC — identifying high-impact use cases and architecting automated solutions to drive operational efficiency and new revenue streams.',
+      'Completely owned the payments module.',
     ],
   },
   {
@@ -29,6 +30,7 @@ export const workExperience: WorkExperience[] = [
       'Worked on the React frontend for risk and enforcement modules within Microsoft\'s Bing Ads platform — a large-scale, high-traffic adtech system serving millions of advertisers globally.',
       'Cut first-load time by 40% through strategic code-splitting and lazy loading.',
       'Reduced CI pipeline build times by 20% through build configuration improvements.',
+      'Improved load time of a graph-based component by as much as 50% by virtualising it.',
       'Introduced Husky pre-commit hooks and full TypeScript coverage for the Redux layer, enforcing type safety across the team codebase.',
     ],
   },
